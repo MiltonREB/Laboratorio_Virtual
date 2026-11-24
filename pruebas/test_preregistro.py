@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -183,6 +184,51 @@ class TestPublicacionGit(unittest.TestCase):
 
     def test_ruta_inexistente(self):
         self.assertIsNone(preregistro.publicacion_git(self.raiz / "no_existe.json"))
+
+
+class TestHerramientaVerificacion(unittest.TestCase):
+    """Cualquiera debe poder comprobar un sello sin privilegios."""
+
+    def setUp(self):
+        self.raiz = espacio_temporal("verificador")
+        self.hipotesis = HipotesisDePrueba()
+        self.sello = preregistro.sellar(self.hipotesis, self.raiz)
+        self.script = Path(__file__).resolve().parent.parent / "herramientas" / "verificar_preregistro.py"
+
+    def _ejecutar(self, *extra):
+        import subprocess
+        import sys as _sys
+
+        return subprocess.run(
+            [_sys.executable, str(self.script), "--sello", str(self.sello.ruta), *extra],
+            capture_output=True, text=True, timeout=120,
+        )
+
+    def test_sello_intacto_pasa(self):
+        proceso = self._ejecutar()
+        self.assertEqual(proceso.returncode, 0, proceso.stderr)
+        self.assertIn("OK", proceso.stdout)
+
+    def test_sello_alterado_falla(self):
+        contenido = json.loads(self.sello.ruta.read_text(encoding="utf-8"))
+        contenido["firma"]["umbral_mejora"] = 0.99
+        self.sello.ruta.write_text(
+            json.dumps(contenido), encoding="utf-8", newline="\n"
+        )
+        proceso = self._ejecutar()
+        self.assertEqual(proceso.returncode, 1)
+        self.assertIn("REVISAR", proceso.stdout)
+
+    def test_sello_inexistente_falla(self):
+        faltante = self.raiz / "no_existe.json"
+        import subprocess
+        import sys as _sys
+
+        proceso = subprocess.run(
+            [_sys.executable, str(self.script), "--sello", str(faltante)],
+            capture_output=True, text=True, timeout=120,
+        )
+        self.assertNotEqual(proceso.returncode, 0)
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -174,12 +174,29 @@ El preregistro deja de ser un commit local con fecha ajustable:
 El commit del preregistro es **anterior** a cualquier dato de la Fase 1: cuando
 se publicó, esa fase no había empezado.
 
-**Advertencia de visibilidad.** En el momento de escribir esto el repositorio es
-**privado** (la API pública devuelve 404). Un repositorio privado no acredita
-nada ante terceros: la URL no resuelve sin credenciales. El criterio de 0.4b se
-cierra sólo cuando el repositorio sea público, y entonces estas URL serán
-resolubles por cualquiera. Mientras siga privado, el preregistro es verificable
-por quien tenga acceso, no por un tercero.
+**Verificación pública (2026-11-24).** El repositorio es público. Comprobado
+**sin credenciales**, que es como lo vería un revisor:
+
+| Comprobación | Resultado |
+|---|---|
+| `api.github.com/repos/MiltonREB/Laboratorio_Virtual` | HTTP 200 · `"private": false` |
+| Sello de `pendulo_amplitud` en `14bf993` | HTTP 200 (raw, anónimo) |
+| `firma_sha256` publicada | `0d700ebfe0394344261133fafb1d7ce00435e293eb60df2794f775e65d3fefa2` |
+| Hash que verificó T04 en la corrida | `0d700ebfe039…` — **coincide** |
+
+Con eso **0.4b queda cerrado**: el hash del preregistro es resoluble en una URL
+pública, el commit es anterior a cualquier dato de la Fase 1 y cualquiera puede
+repetir la comprobación con `python herramientas/verificar_preregistro.py --url …`.
+
+Lo que el sello publicado permite auditar a un tercero, sin pedir permiso a
+nadie: que `g` estaba fijada en 9.80665, que `c2` y `c4` partían de 0.0, que el
+umbral era 0.1, que el dataset era `pendulo_v1` y que la semilla era 20261124 —
+**antes** de que existiera la corrida.
+
+**Lo que el sello no prueba.** Que nadie mirase los datos antes de sellar. Eso
+no lo resuelve el software: lo resuelve un registro público con testigos, y es
+la razón por la que el sello se publica en un commit con fecha del servidor en
+lugar de quedarse en local.
 
 ---
 

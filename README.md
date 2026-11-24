@@ -27,7 +27,7 @@ protocolo con estos datos, no que sea verdadera.
 |---|---|
 | Protocolo | v1.1.0 ([changelog metodológico](CHANGELOG_METODOLOGICO.md)) |
 | Hipótesis evaluadas | 3 (dos sintéticas de control y una preparada para datos medidos) |
-| Pruebas del propio laboratorio | 326 (`python -m unittest discover -s pruebas -t .`) |
+| Pruebas del propio laboratorio | 329 (`python -m unittest discover -s pruebas -t .`) |
 | Pruebas del protocolo (por hipótesis) | 12, todas bloqueantes |
 | Verificaciones adicionales | 5 (O01–O05); O01 y O04 vinculantes |
 | Gráficos por corrida | 12 (uno por prueba) + los de verificación ejecutada |
@@ -64,6 +64,19 @@ El paso de preregistro y el de ejecución están separados a propósito: por def
 `lab ejecutar` rechaza un sello creado hace menos de 60 segundos
 (`--separacion-minima`). Si además quieres anclar el sello a un testigo externo,
 haz `git add` + `git commit` del archivo del sello y añade `--exigir-publicacion`.
+
+Después, cualquiera puede comprobar —sin credenciales— que el sello publicado es
+el que se usó en la corrida:
+
+```powershell
+& $py herramientas\verificar_preregistro.py `
+      --sello resultados\preregistro\<hipotesis>\<sello>.json `
+      --resumen resultados\<corrida>\resumen.json `
+      --url https://raw.githubusercontent.com/<usuario>/<repo>/<commit>/<ruta-al-sello>
+```
+
+Compara tres cosas: el hash recalculado del sello, el que la corrida registró y
+el de la copia publicada. Los tres tienen que coincidir.
 
 Para evaluar todo de una vez:
 

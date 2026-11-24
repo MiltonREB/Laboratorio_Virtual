@@ -19,7 +19,7 @@ import traceback
 from pathlib import Path
 from typing import Sequence
 
-from . import consolidado, evaluador, ingesta, panel as modulo_panel, preregistro
+from . import __version__, consolidado, evaluador, ingesta, panel as modulo_panel, preregistro
 from .datos import ErrorDeDatos, Manifiesto
 from .evaluador import ErrorDeEvaluacion, evaluar_hipotesis
 from .informe import resumen_consola
@@ -539,7 +539,7 @@ def construir_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--raiz", help="Raíz del laboratorio (por defecto, la del paquete)")
-    parser.add_argument("--version", action="version", version="lab 1.0.0")
+    parser.add_argument("--version", action="version", version=f"lab {__version__}")
     sub = parser.add_subparsers(dest="comando", required=True)
 
     p = sub.add_parser("hipotesis", help="Lista las hipótesis registradas")

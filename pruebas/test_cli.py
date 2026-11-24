@@ -73,7 +73,7 @@ class TestComandosReales(unittest.TestCase):
             cwd=str(RAIZ), capture_output=True, text=True, timeout=60,
         )
         self.assertEqual(proceso.returncode, 0, proceso.stderr)
-        self.assertIn("lab 1.0.0", proceso.stdout)
+        self.assertIn("lab 1.1.0", proceso.stdout)
 
     def test_datos_accion_listar(self):
         codigo, salida, _ = correr(["datos", "listar"])

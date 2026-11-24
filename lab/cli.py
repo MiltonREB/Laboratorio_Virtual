@@ -161,6 +161,11 @@ def cmd_preregistrar(args: argparse.Namespace) -> int:
     print()
     print("A partir de aquí no cambies parámetros, umbrales, métrica ni semilla:"
           " cualquier cambio invalidará el preregistro (prueba T04).")
+    print()
+    print("Para acreditar anterioridad, publica el sello en un commit:")
+    print(f"  git add \"{sello.ruta}\"")
+    print(f"  git commit -m \"preregistro: {h.id}\"")
+    print("Después añade --exigir-publicacion al ejecutar.")
     return 0
 
 
@@ -208,6 +213,8 @@ def cmd_ejecutar(args: argparse.Namespace) -> int:
                 guardar=not args.sin_guardar,
                 sensibilidad_bootstrap=args.sensibilidad_bootstrap,
                 hipotesis_mismo_dataset=comparten.get(h.dataset_id, 1),
+                separacion_minima=args.separacion_minima,
+                exigir_publicacion=args.exigir_publicacion,
             )
         except ErrorDeEvaluacion as exc:
             print(f"\n[{id_}] no se pudo evaluar: {exc}", file=sys.stderr)
@@ -262,9 +269,7 @@ def cmd_estado(args: argparse.Namespace) -> int:
         "APROBADO": "ok ",
         "FALLIDO": "X  ",
         "PENDIENTE": ".  ",
-        "NO_APLICABLE": "-  ",
-        "NO_PRESENTADA": "np ",
-        "SENSIBLE_AL_DISENO": "sn ",
+        "SENSIBLE": "sn ",
     }
     for id_, c in sorted(ultimas.items()):
         estados = {p["codigo"]: p["estado"] for p in c.get("pruebas", [])}
@@ -278,8 +283,7 @@ def cmd_estado(args: argparse.Namespace) -> int:
         print(f"  {id_}: {v.get('estado')}")
         print(f"    {v.get('motivo')}")
     print()
-    print("Leyenda: ok=aprobado  X=fallido  .=pendiente  -=no aplicable"
-          "  np=no presentada  sn=sensible al diseno")
+    print("Leyenda: ok=aprobado  X=fallido  .=pendiente  sn=sensible al diseno")
     print()
     for cod in ORDEN:
         print(f"  {cod}  {TITULOS[cod]}")
@@ -470,6 +474,10 @@ def construir_parser() -> argparse.ArgumentParser:
                    help="No escribe artefactos en resultados/")
     p.add_argument("--sensibilidad-bootstrap", action="store_true",
                    help="Ejecuta la verificación O03 (500 y 4000 remuestreos)")
+    p.add_argument("--separacion-minima", type=float, default=60.0,
+                   help="Segundos mínimos entre el sello y la corrida (por defecto 60)")
+    p.add_argument("--exigir-publicacion", action="store_true",
+                   help="Exige que el sello esté publicado en un commit de git")
     p.add_argument("--panel", action="store_true",
                    help="Regenera el panel al terminar")
     p.set_defaults(func=cmd_ejecutar)

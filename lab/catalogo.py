@@ -67,8 +67,8 @@ PRUEBAS_PROTOCOLO: tuple[Definicion, ...] = (
         "T03", "Predicción diferenciadora",
         "Comprueba que la hipótesis prediga algo distinto del baseline por "
         "encima de la sensibilidad declarada.",
-        "Nunca se omite, pero puede devolver NO_PRESENTADA si ΔO es nulo o "
-        "indistinguible: eso también es un resultado.",
+        "Nunca se omite, pero puede quedar en PENDIENTE si ΔO es nulo o no "
+        "distinguible: eso también es un resultado.",
     ),
     Definicion(
         "T04", "Preregistro",
@@ -80,7 +80,7 @@ PRUEBAS_PROTOCOLO: tuple[Definicion, ...] = (
         "Comprueba que los parámetros libres se ajusten sólo con la muestra "
         "de calibración.",
         "Cuando la hipótesis no declara parámetros libres: no hay ajuste que "
-        "aislar y la prueba devuelve NO_APLICABLE.",
+        "aislar y la prueba se cumple de forma vacua (se marca como tal).",
     ),
     Definicion(
         "T06", "Validación fuera de muestra",
@@ -131,10 +131,11 @@ VERIFICACIONES_OPCIONALES: tuple[Definicion, ...] = (
     Definicion(
         "O01", "Contraste con un baseline alternativo",
         "Repite la comparación contra cada modelo alternativo declarado por la "
-        "hipótesis, para saber si la ventaja depende del baseline elegido.",
-        "Cuando la hipótesis no declara ``baselines_alternativos``: sin otros "
-        "modelos no hay contraste de robustez que hacer.",
-        vinculante=False,
+        "hipótesis, para saber si la ventaja depende del baseline elegido. "
+        "Vinculante: sin ella el veredicto máximo es PRELIMINAR.",
+        "Cuando la hipótesis no declara ``baselines_alternativos``. En ese caso "
+        "no hay contraste de robustez y el veredicto máximo es PRELIMINAR.",
+        vinculante=True,
     ),
     Definicion(
         "O02", "Validación por bloques del dominio",
@@ -155,10 +156,12 @@ VERIFICACIONES_OPCIONALES: tuple[Definicion, ...] = (
     Definicion(
         "O04", "Holdout externo",
         "Repite la comparación sobre un dataset independiente declarado en "
-        "``dataset_validacion``.",
+        "``dataset_validacion``. Vinculante: sin ella el veredicto máximo es "
+        "PRELIMINAR, y si falla el veredicto es NO_CORROBORADA.",
         "Cuando la hipótesis no declara dataset de validación: reutilizar el "
-        "reservado como holdout no sería un contraste externo.",
-        vinculante=False,
+        "reservado como holdout no sería un contraste externo, y el veredicto "
+        "máximo pasa a PRELIMINAR.",
+        vinculante=True,
     ),
     Definicion(
         "O05", "Corrección por comparaciones múltiples",
@@ -206,10 +209,11 @@ class OpcionesVerificacion:
 class ResultadoVerificacion:
     codigo: str
     titulo: str
-    estado: str  # "EJECUTADA" | "NO_REQUERIDA"
+    estado: str  # "EJECUTADA" | "PENDIENTE" | "NO_REQUERIDA"
     motivo: str
     detalle: str = ""
     evidencia: Mapping[str, Any] = field(default_factory=dict)
+    vinculante: bool = False
 
     @property
     def ejecutada(self) -> bool:
@@ -221,6 +225,7 @@ class ResultadoVerificacion:
             "titulo": self.titulo,
             "estado": self.estado,
             "ejecutada": self.ejecutada,
+            "vinculante": self.vinculante,
             "motivo": self.motivo,
             "detalle": self.detalle,
             "evidencia": dict(self.evidencia),
@@ -238,13 +243,17 @@ def ejecutar(
 ) -> list[ResultadoVerificacion]:
     """Ejecuta las verificaciones opcionales cuyas precondiciones se cumplen."""
     op = opciones or OpcionesVerificacion()
-    return [
+    resultados = [
         _o01_baseline_alternativo(contexto),
         _o02_bloques(contexto),
         _o03_bootstrap(contexto, op),
         _o04_holdout(contexto, op),
         _o05_multiples(contexto, op),
     ]
+    catalogo = definiciones()
+    for resultado in resultados:
+        resultado.vinculante = catalogo[resultado.codigo].vinculante
+    return resultados
 
 
 def _no_requerida(codigo: str, motivo: str, detalle: str = "") -> ResultadoVerificacion:

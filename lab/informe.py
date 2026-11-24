@@ -15,10 +15,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 EMBLEMA: dict[str, str] = {
     "CORROBORADA_PROVISIONAL": "✅ CORROBORADA (provisional)",
+    "PRELIMINAR": "🟡 PRELIMINAR",
     "NO_CORROBORADA": "❌ NO CORROBORADA",
-    "REFUTADA": "🛑 REFUTADA",
     "NO_PRESENTADA": "⚪ NO PRESENTADA",
-    "SENSIBLE_AL_DISENO": "🟠 SENSIBLE AL DISEÑO",
+    "SENSIBLE": "🟠 SENSIBLE AL DISEÑO",
     "FUERA_DE_DOMINIO": "🚫 FUERA DE DOMINIO",
     "PENDIENTE": "⏳ PENDIENTE",
 }
@@ -74,6 +74,23 @@ def informe_markdown(resultado: "ResultadoEvaluacion") -> str:
         partes.append("")
         for a in d["advertencias"]:
             partes.append(f"- {a}")
+        partes.append("")
+
+    avisos = d.get("viabilidad") or []
+    if avisos:
+        partes.append("## 0. Advertencias de viabilidad (calculadas antes de la batería)")
+        partes.append("")
+        partes.append(
+            "Se evalúan antes de ejecutar las doce pruebas y **no** cambian el "
+            "veredicto: señalan diseños que difícilmente puedan sostener una "
+            "conclusión."
+        )
+        partes.append("")
+        partes.append(_tabla(
+            ["código", "severidad", "aviso", "detalle"],
+            [[a["codigo"], a["severidad"], a["mensaje"], a.get("detalle", "")]
+             for a in avisos],
+        ))
         partes.append("")
 
     partes.append("## 1. Hipótesis contrastada")
@@ -165,6 +182,14 @@ def informe_markdown(resultado: "ResultadoEvaluacion") -> str:
         f"**Mejora relativa en reservado:** {_fmt(i['mejora'], 4)} "
         f"(IC {int(i['nivel'] * 100)} %: {_fmt(i['ic_inferior'], 4)} a "
         f"{_fmt(i['ic_superior'], 4)}, {i['remuestreos']} remuestreos)."
+    )
+    partes.append("")
+    ratio_texto = comp.get("ratio_errores_texto") or "—"
+    partes.append(
+        f"**Error de la hipótesis frente al baseline:** {ratio_texto} "
+        "(ε_hip / ε_base). Una mejora de +0.99 significa que el error de la "
+        "hipótesis es ~1 % del error del baseline, no que el modelo sea casi "
+        "perfecto: mide cuánto se equivoca el baseline."
     )
     partes.append("")
     partes.append(
@@ -271,9 +296,11 @@ def informe_markdown(resultado: "ResultadoEvaluacion") -> str:
     partes.append(_tabla(
         ["campo", "valor"],
         [
-            ["existe sello", pr.get("existe")],
-            ["coincide con la firma actual", pr.get("coincide")],
-            ["creado durante la evaluación (tardío)", pr.get("tardio")],
+            ["estado", f"`{pr.get('estado_preregistro')}`"],
+            ["coincide con la firma actual", "sí" if pr.get("aceptable") or pr.get("firma_en_sello") == pr.get("firma_actual") else "no"],
+            ["antigüedad del sello (s)", _fmt(pr.get("antiguedad_segundos"), 3)],
+            ["separación mínima exigida (s)", _fmt(pr.get("separacion_minima"), 3)],
+            ["publicado en git", pr.get("publicado_utc") or "no"],
             ["firma en el sello", pr.get("firma_en_sello")],
             ["firma actual", pr.get("firma_actual")],
             ["creado (UTC)", pr.get("creado_utc")],
@@ -352,24 +379,29 @@ def resumen_consola(resultado: "ResultadoEvaluacion", ancho: int = 78) -> str:
     lineas.append("-" * ancho)
     for p in d["pruebas"]:
         marca = {
-            "APROBADO": "OK  ",
+            "APROBADO": "OK   ",
             "FALLIDO": "FALLA",
             "PENDIENTE": "PEND ",
-            "NO_APLICABLE": "N/A ",
-            "NO_PRESENTADA": "N/P ",
-            "SENSIBLE_AL_DISENO": "SENS",
-        }.get(p["estado"], "?   ")
-        lineas.append(f"  {p['codigo']} {marca} {p['detalle'][:58]}")
+            "SENSIBLE": "SENS ",
+        }.get(p["estado"], "?    ")
+        lineas.append(f"  {p['codigo']} {marca} {p['detalle'][:56]}")
     lineas.append("-" * ancho)
     comp = d["comparacion"]
     i = comp["intervalo"]
     lineas.append(
         f"Mejora en reservado: {i['mejora']:+.4f} "
-        f"(IC: {i['ic_inferior']:+.4f} a {i['ic_superior']:+.4f})"
+        f"(IC: {i['ic_inferior']:+.4f} a {i['ic_superior']:+.4f}) · "
+        f"error hip/baseline = {comp.get('ratio_errores_texto', '—')}"
     )
     lineas.append(
         f"Error reservado: hipótesis {comp['error_reservado'].get('hipotesis'):.6g} "
         f"vs baseline {comp['error_reservado'].get('baseline'):.6g}"
     )
+    avisos = d.get("viabilidad") or []
+    if avisos:
+        lineas.append(
+            f"Viabilidad: {len(avisos)} aviso(s) pre-corrida — "
+            + ", ".join(a["codigo"] for a in avisos)
+        )
     lineas.append("=" * ancho)
     return "\n".join(lineas)

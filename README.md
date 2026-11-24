@@ -22,11 +22,11 @@ protocolo con estos datos, no que sea verdadera.
 
 | Elemento | Cantidad |
 |---|---|
+| Protocolo | v1.1.0 ([changelog metodológico](CHANGELOG_METODOLOGICO.md)) |
 | Hipótesis evaluadas | 2 (una de control positivo, una de control negativo) |
-| Pruebas del propio laboratorio | 255 (`python -m unittest discover -s pruebas -t .`) |
-| Cobertura del paquete `lab` | 88.7 % (`python herramientas/cobertura.py`) |
-| Pruebas del protocolo (por hipótesis) | 12 |
-| Verificaciones opcionales | 5 (O01–O05); 3 ejercitadas en la demo |
+| Pruebas del propio laboratorio | 297 (`python -m unittest discover -s pruebas -t .`) |
+| Pruebas del protocolo (por hipótesis) | 12, todas bloqueantes |
+| Verificaciones adicionales | 5 (O01–O05); O01 y O04 vinculantes |
 | Gráficos por corrida | 12 (uno por prueba) + los de verificación ejecutada |
 | Datasets congelados con SHA-256 | 3 (dos de ajuste, uno de validación externa) |
 
@@ -53,9 +53,14 @@ cd C:\atomo\laboratorio
 & $py -m lab hipotesis listar     # qué hipótesis hay y si su contrato está completo
 & $py -m lab datos verificar      # integridad SHA-256 y particiones de cada dataset
 & $py -m lab preregistrar --id pendulo_amplitud
-& $py -m lab ejecutar --id pendulo_amplitud
+& $py -m lab ejecutar --id pendulo_amplitud    # exige 60 s desde el sello
 & $py -m lab panel                # panel HTML en panel\index.html
 ```
+
+El paso de preregistro y el de ejecución están separados a propósito: por defecto
+`lab ejecutar` rechaza un sello creado hace menos de 60 segundos
+(`--separacion-minima`). Si además quieres anclar el sello a un testigo externo,
+haz `git add` + `git commit` del archivo del sello y añade `--exigir-publicacion`.
 
 Para evaluar todo de una vez:
 
@@ -93,7 +98,8 @@ laboratorio\
 │   ├── preregistro.py    sello criptográfico de parámetros y umbrales
 │   ├── metricas.py       rmse / mae / chi2, bootstrap, reglas de decisión
 │   ├── protocolo.py      batería T01–T12
-│   ├── catalogo.py       catálogo de pruebas y verificaciones opcionales O01–O05
+│   ├── catalogo.py       catálogo de pruebas y verificaciones O01–O05
+│   ├── viabilidad.py     avisos calculados antes de la corrida
 │   ├── graficos.py       un gráfico SVG por prueba
 │   ├── veredicto.py      agregación de estados en un veredicto
 │   ├── evaluador.py      orquestación, artefactos y esquema de resumen.json
@@ -107,7 +113,7 @@ laboratorio\
 ├── herramientas\         verificación del panel, adaptador y cobertura
 ├── resultados\           una carpeta por corrida + sellos + consolidado
 ├── panel\                panel HTML generado (no versionado)
-├── pruebas\              255 pruebas del propio laboratorio
+├── pruebas\              297 pruebas del propio laboratorio
 └── .github\workflows\    integración continua
 ```
 
@@ -158,9 +164,9 @@ números. `ajustar` recibe sólo la muestra de calibración.
 |---|---|---|
 | T01 | Formalización | Falta un metadato, unidad o dominio |
 | T02 | Falsabilidad | La predicción es constante, vacía o no numérica |
-| T03 | Predicción diferenciadora | La hipótesis coincide con el baseline o su ΔO no es observable |
-| T04 | Preregistro | Los umbrales cambiaron después de sellarse, o no hay sello |
-| T05 | Calibración | Se ajustó con datos reservados, o se declararon parámetros libres que nunca se ajustaron |
+| T03 | Predicción diferenciadora | \|ΔO\| no alcanza el error del baseline × factor |
+| T04 | Preregistro | Sello ausente, reciente, alterado o sin publicar |
+| T05 | Calibración | Se ajustó con datos reservados, o se declararon libres que nunca se ajustaron |
 | T06 | Fuera de muestra | El error sobre datos reservados excede 5× la escala admitida |
 | T07 | Baseline | No hay mejora significativa sobre el modelo convencional |
 | T08 | Estabilidad | El signo de la mejora cambia al cambiar la partición |
@@ -169,26 +175,43 @@ números. `ajustar` recibe sólo la muestra de calibración.
 | T11 | Control nulo | La hipótesis «gana» sobre datos generados por el baseline |
 | T12 | Dominio | Se evaluó fuera del rango declarado |
 
+Cuatro estados: `APROBADO`, `PENDIENTE`, `SENSIBLE`, `FALLIDO`. Ninguna prueba se
+llama «refutada» y T07/T08 nunca declaran fracaso: que el baseline sea mejor dice
+que este diseño no sostiene la hipótesis, no que la idea sea falsa.
+
 Los detalles normativos están en [PROTOCOLO.md](PROTOCOLO.md).
 
-## Verificaciones opcionales
+## Verificaciones adicionales
 
-Cinco comprobaciones más que **amplían el diagnóstico sin cambiar el veredicto**.
-Cada una declara su precondición: si no se cumple, queda registrado el motivo.
+Cinco comprobaciones más. **Dos son vinculantes** (O01 y O04): condicionan el
+veredicto máximo. Las otras tres son informativas.
 
-| Código | Verificación | Se ejecuta cuando |
-|---|---|---|
-| O01 | Contraste con baselines alternativos | La hipótesis declara `baselines_alternativos` |
-| O02 | Validación por bloques del dominio | Hay ≥ 3 bloques de ≥ 10 filas reservadas |
-| O03 | Sensibilidad al número de remuestreos | Se pide con `--sensibilidad-bootstrap` |
-| O04 | Holdout externo | La hipótesis declara `dataset_validacion` y existe |
-| O05 | Corrección por comparaciones múltiples | Más de una hipótesis usa el dataset |
+| Código | Verificación | Vinculante | Se ejecuta cuando |
+|---|---|---|---|
+| O01 | Contraste con baselines alternativos | **Sí** | La hipótesis declara `baselines_alternativos` |
+| O02 | Validación por bloques del dominio | No | Hay ≥ 3 bloques de ≥ 10 filas reservadas |
+| O03 | Sensibilidad al número de remuestreos | No | Se pide con `--sensibilidad-bootstrap` |
+| O04 | Holdout externo | **Sí** | Declara `dataset_validacion` y existe |
+| O05 | Corrección por comparaciones múltiples | No | Más de una hipótesis usa el dataset |
 
 La demo deja un resultado incómodo y útil. `pendulo_amplitud` gana al baseline
 lineal (mejora +0.99) y al de segundo orden (+0.85), pero **no** al modelo de
 cuarto orden con coeficientes fijos (mejora −0.0004). Su ventaja frente al
 baseline principal procede de incorporar una corrección que ese baseline no
-tiene, no de superar a un modelo correcto. Sin O01 eso no se ve.
+tiene, no de superar a un modelo correcto.
+
+Por eso su veredicto es **`PRELIMINAR`**, no `CORROBORADA_PROVISIONAL`: doce
+pruebas cumplidas, holdout externo superado, pero no gana a todos los baselines.
+Ése es exactamente el tipo de hallazgo que antes quedaba enterrado en una
+verificación opcional.
+
+## Advertencias de viabilidad (antes de la corrida)
+
+Antes de ejecutar la batería el laboratorio calcula seis comprobaciones que **no
+cambian el veredicto** y ahorran corridas: parámetros libres frente a filas de
+calibración, tamaño del reservado, umbral dentro del ruido, cobertura del dominio,
+presupuesto de incertidumbre y estado del preregistro. Aparecen en el informe, en
+el panel y en la consola.
 
 ## Adaptadores para código heredado
 
@@ -229,8 +252,10 @@ ninguna hipótesis PRDU ni afirma física: verifica el mecanismo.
 El laboratorio es un repositorio git con integración continua
 (`.github/workflows/ci.yml`). En cada push, CI ejecuta: integridad de los datos
 congelados, regeneración bit a bit de los datasets (`git diff --exit-code`),
-las 255 pruebas, una corrida de demostración completa, la validación del panel
-generado y la cobertura mínima.
+las 297 pruebas, una corrida de demostración completa, la validación del panel
+generado y la cobertura mínima. La corrida de CI usa `--separacion-minima 0`
+porque sólo comprueba la fontanería; el requisito de anterioridad es una
+garantía de proceso, no de CI.
 
 La cobertura se mide sin dependencias externas, con el módulo `trace` de la
 biblioteca estándar:
@@ -287,13 +312,15 @@ SVG parseables y sin coordenadas fuera de lienzo):
 
 | Veredicto | Significado |
 |---|---|
-| `CORROBORADA_PROVISIONAL` | Superó todas las pruebas bloqueantes y la conclusión es estable |
-| `NO_CORROBORADA` | No generaliza o no demuestra mejora sobre el baseline |
-| `REFUTADA` | Predice significativamente peor que el baseline en reservado |
-| `NO_PRESENTADA` | No hay predicción diferenciadora que contrastar |
-| `SENSIBLE_AL_DISENO` | La conclusión cambia al cambiar la partición de los datos |
+| `CORROBORADA_PROVISIONAL` | Doce pruebas cumplidas, supera a todos los baselines declarados, se sostiene en holdout externo y es estable |
+| `PRELIMINAR` | Doce pruebas cumplidas, pero falta O01 u O04, o no gana a algún baseline alternativo |
+| `NO_CORROBORADA` | No generaliza, no demuestra mejora, o falla el holdout externo |
+| `NO_PRESENTADA` | No hay predicción diferenciadora contrastable |
+| `SENSIBLE` | La conclusión cambia al cambiar la partición de los datos |
 | `FUERA_DE_DOMINIO` | La evaluación sale del rango declarado |
 | `PENDIENTE` | Falta evidencia; nunca equivale a aprobación |
+
+`PRELIMINAR` no es un aprobado suave: no debe citarse como corroboración.
 
 ## Qué produce cada corrida
 

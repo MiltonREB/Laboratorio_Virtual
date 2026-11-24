@@ -37,16 +37,16 @@ jobs:
         run: python -m unittest discover -s pruebas -t . -v
 
       - name: Corrida de demostración
+        # --separacion-minima 0: CI comprueba la fontanería, no la anterioridad
+        # del preregistro. La separación temporal es una garantía de proceso.
         run: |
           python -m lab preregistrar --id pendulo_amplitud
           python -m lab preregistrar --id pendulo_polinomio_alto
-          python -m lab ejecutar --todos --panel
+          python -m lab ejecutar --todos --panel --separacion-minima 0
+          python -m lab consolidado
 
       - name: El panel generado es válido
         run: python herramientas/verificar_panel.py
-
-      - name: Informe consolidado
-        run: python -m lab consolidado
 
       - name: Cobertura mínima
         run: python herramientas/cobertura.py --minimo 80

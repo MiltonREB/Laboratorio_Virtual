@@ -3,8 +3,11 @@
 Cada prueba es una función ``ContextoEvaluacion -> ResultadoPrueba``. Ninguna
 prueba supone buena fe: si no puede verificar algo, devuelve ``PENDIENTE``
 en lugar de ``APROBADO``. Un veredicto global sólo puede ser
-``CORROBORADA_PROVISIONAL`` si todas las pruebas bloqueantes están en
-``APROBADO`` o ``NO_APLICABLE``.
+``CORROBORADA_PROVISIONAL`` si las doce pruebas están en ``APROBADO`` y las
+verificaciones vinculantes lo respaldan.
+
+Estados (v1.1.0): ``APROBADO``, ``PENDIENTE``, ``SENSIBLE``, ``FALLIDO``.
+No hay un estado «no aplicable»: el caso vacuo es ``APROBADO`` y se marca.
 
 Orden y sentido de las pruebas
 ------------------------------
@@ -56,9 +59,8 @@ TITULOS: dict[str, str] = {
 }
 
 #: Pruebas sin las cuales no puede emitirse un veredicto positivo.
-BLOQUEANTES: frozenset[str] = frozenset(
-    {"T01", "T02", "T03", "T04", "T06", "T07", "T09", "T10", "T11", "T12"}
-)
+#: v1.1.0: las doce son bloqueantes.
+BLOQUEANTES: frozenset[str] = frozenset(ORDEN)
 
 #: Factor de tolerancia para decidir que un error "cabe" en el presupuesto.
 FACTOR_INCERTIDUMBRE = 3.0
@@ -161,6 +163,7 @@ def t02_falsabilidad(ctx: ContextoEvaluacion) -> ResultadoPrueba:
             "T02", TITULOS["T02"], "FALLIDO",
             "La hipótesis no emite una predicción numérica falsable",
             {"problemas": problemas},
+            es_ausencia=True,
         )
     return ResultadoPrueba(
         "T02", TITULOS["T02"], "APROBADO",
@@ -179,82 +182,90 @@ def t02_falsabilidad(ctx: ContextoEvaluacion) -> ResultadoPrueba:
 
 
 def t03_prediccion_diferenciadora(ctx: ContextoEvaluacion) -> ResultadoPrueba:
+    """¿La diferencia con el baseline es distinguible **en la escala de los datos**?
+
+    v1.1.0: el criterio ya no es una tolerancia absoluta. Se exige que |ΔO|
+    supere ``factor_diferenciacion`` veces el error del baseline sobre la misma
+    muestra reservada, que es la escala real de lo que el modelo alternativo se
+    equivoca. Una tolerancia absoluta (p. ej. 10⁻⁴ s) puede cumplirse con una
+    diferencia que en la práctica es ruido, o rechazar una diferencia grande en
+    otra unidad.
+    """
     delta = ctx.delta_reservado
     maximo = float(np.max(np.abs(delta))) if delta.size else 0.0
     rms = float(np.sqrt(np.mean(delta ** 2))) if delta.size else 0.0
-    umbral = float(ctx.hipotesis.umbral_sensibilidad or 0.0)
+    escala = float(ctx.errores_reservado.get("baseline", float("nan")))
+    factor = float(ctx.hipotesis.factor_diferenciacion)
+    suelo = ctx.hipotesis.umbral_sensibilidad
+    suelo = float(suelo) if suelo is not None else 0.0
+    exigido = max(factor * escala, suelo) if np.isfinite(escala) else suelo
     datos = {
         "delta_max_abs": maximo,
         "delta_rms": rms,
-        "umbral_sensibilidad": umbral,
+        "escala_baseline": escala if np.isfinite(escala) else None,
+        "factor_diferenciacion": factor,
+        "umbral_sensibilidad_absoluto": suelo or None,
+        "exigido": exigido,
+        "veces_la_escala": (maximo / escala) if np.isfinite(escala) and escala > 0 else None,
         "unidad": ctx.hipotesis.unidad_observable,
         "texto": ctx.hipotesis.prediccion_diferenciadora,
     }
     if maximo == 0.0:
         return ResultadoPrueba(
-            "T03", TITULOS["T03"], "NO_PRESENTADA",
+            "T03", TITULOS["T03"], "PENDIENTE",
             "La hipótesis predice exactamente lo mismo que el baseline: "
             "no hay predicción diferenciadora que contrastar",
             datos,
+            es_ausencia=True,
         )
-    if maximo < umbral:
+    if maximo < exigido:
         return ResultadoPrueba(
-            "T03", TITULOS["T03"], "NO_PRESENTADA",
+            "T03", TITULOS["T03"], "PENDIENTE",
             (
-                f"La diferencia máxima con el baseline ({maximo:.6g} "
-                f"{ctx.hipotesis.unidad_observable}) es menor que la sensibilidad "
-                f"declarada ({umbral:.6g}): no es observable con este diseño"
+                f"|ΔO| máximo {maximo:.4g} {ctx.hipotesis.unidad_observable} no supera "
+                f"lo exigido ({exigido:.4g}): {factor:g}× el error del baseline "
+                f"({escala:.4g})" if np.isfinite(escala) else
+                f"|ΔO| máximo {maximo:.4g} no supera el suelo absoluto {exigido:.4g}"
             ),
             datos,
+            es_ausencia=True,
         )
-    return ResultadoPrueba(
-        "T03", TITULOS["T03"], "APROBADO",
-        (
-            f"ΔO máximo {maximo:.6g} {ctx.hipotesis.unidad_observable} supera la "
-            f"sensibilidad declarada {umbral:.6g}"
-        ),
-        datos,
+    detalle = (
+        f"|ΔO| máximo {maximo:.4g} {ctx.hipotesis.unidad_observable} = "
+        f"{maximo / escala:.1f}× el error del baseline ({escala:.4g})"
+        if np.isfinite(escala) and escala > 0
+        else f"|ΔO| máximo {maximo:.4g} supera el suelo {exigido:.4g}"
     )
+    return ResultadoPrueba("T03", TITULOS["T03"], "APROBADO", detalle, datos)
 
 
 def t04_preregistro(ctx: ContextoEvaluacion) -> ResultadoPrueba:
+    """Traduce el estado único del preregistro al estado de la prueba."""
     v = ctx.verificacion
     if v is None:
         return ResultadoPrueba(
             "T04", TITULOS["T04"], "PENDIENTE",
-            "No se pudo verificar el preregistro", {},
+            "No se pudo verificar el preregistro", {"estado_preregistro": None},
         )
-    if not v.existe:
-        return ResultadoPrueba(
-            "T04", TITULOS["T04"], "PENDIENTE",
-            (
-                "No hay sello de preregistro para esta hipótesis. Ejecuta "
-                f"`lab preregistrar --id {ctx.hipotesis.id}` antes de evaluar."
-            ),
-            v.como_dict(),
-        )
-    if not v.coincide:
-        return ResultadoPrueba(
-            "T04", TITULOS["T04"], "FALLIDO",
-            (
-                "La firma actual no coincide con el sello: parámetros, umbrales o "
-                "métrica cambiaron después del preregistro. El veredicto no es válido."
-            ),
-            {**v.como_dict(), "cambios": ctx.reproducibilidad.get("cambios_firma", [])},
-        )
-    if v.tardio:
-        return ResultadoPrueba(
-            "T04", TITULOS["T04"], "PENDIENTE",
-            (
-                "El sello se creó durante la evaluación, no antes. No se puede "
-                "probar que los umbrales fueran anteriores a los datos."
-            ),
-            v.como_dict(),
-        )
+    from .preregistro import describir
+
+    mapa = {
+        "VALIDO": "APROBADO",
+        "ALTERADO": "FALLIDO",
+        "AUSENTE": "PENDIENTE",
+        "TARDIO": "PENDIENTE",
+        "RECIENTE": "PENDIENTE",
+        "NO_PUBLICADO": "PENDIENTE",
+    }
+    datos = v.como_dict()
+    if v.estado_preregistro == "ALTERADO":
+        datos["cambios"] = ctx.reproducibilidad.get("cambios_firma", [])
     return ResultadoPrueba(
-        "T04", TITULOS["T04"], "APROBADO",
-        f"Sello verificado ({v.firma_actual[:12]}…), creado {v.creado_utc}",
-        v.como_dict(),
+        "T04",
+        TITULOS["T04"],
+        mapa.get(v.estado_preregistro, "PENDIENTE"),
+        describir(v),
+        datos,
     )
 
 
@@ -269,6 +280,7 @@ def t05_calibracion(ctx: ContextoEvaluacion) -> ResultadoPrueba:
         "filas_reservado": len(ctx.dataset.reservado),
         "solape_particiones": len(solape),
         "ajuste_usado": ctx.ajuste_usado,
+        "vacuo": not libres,
     }
     if solape:
         return ResultadoPrueba(
@@ -281,8 +293,9 @@ def t05_calibracion(ctx: ContextoEvaluacion) -> ResultadoPrueba:
         )
     if not libres:
         return ResultadoPrueba(
-            "T05", TITULOS["T05"], "NO_APLICABLE",
-            "La hipótesis no declara parámetros libres; no hay ajuste que aislar",
+            "T05", TITULOS["T05"], "APROBADO",
+            "Se cumple de forma vacua: la hipótesis no declara parámetros libres, "
+            "así que no hay ajuste que pueda contaminar el reservado",
             datos,
         )
     if not ctx.ajuste_usado:
@@ -342,27 +355,53 @@ def t06_fuera_de_muestra(ctx: ContextoEvaluacion) -> ResultadoPrueba:
 
 
 def t07_baseline(ctx: ContextoEvaluacion) -> ResultadoPrueba:
+    """Comparación con el baseline.
+
+    v1.1.0: esta prueba **nunca** devuelve ``FALLIDO``. Que el baseline sea
+    significativamente mejor no refuta la hipótesis: dice que este diseño no la
+    sostiene. El estado es ``APROBADO`` o ``PENDIENTE``, y el hecho de que el
+    intervalo quede bajo cero se registra en ``peor_que_baseline``.
+    """
     if ctx.intervalo_reservado is None or ctx.decision_baseline is None:
         return ResultadoPrueba(
             "T07", TITULOS["T07"], "PENDIENTE",
             "No se pudo calcular la comparación con el baseline", {},
         )
     i = ctx.intervalo_reservado
+    from .metricas import ratio_errores
+
+    eh = ctx.errores_reservado.get("hipotesis")
+    eb = ctx.errores_reservado.get("baseline")
+    peor = bool(i.superior < 0.0)
     datos = {
         **i.como_dict(),
-        "error_hipotesis": _num(ctx.errores_reservado.get("hipotesis")),
-        "error_baseline": _num(ctx.errores_reservado.get("baseline")),
+        "error_hipotesis": _num(eh),
+        "error_baseline": _num(eb),
+        "ratio_errores": ratio_errores(float(eh), float(eb)) if eh is not None and eb is not None else None,
         "metrica": ctx.hipotesis.metrica,
         "umbral_mejora": ctx.hipotesis.umbral_mejora,
+        "peor_que_baseline": peor,
     }
-    return ResultadoPrueba(
-        "T07", TITULOS["T07"], ctx.decision_baseline.estado,
-        ctx.decision_baseline.motivo,
-        datos,
-    )
+    if ctx.decision_baseline.estado == "APROBADO":
+        return ResultadoPrueba(
+            "T07", TITULOS["T07"], "APROBADO", ctx.decision_baseline.motivo, datos
+        )
+    detalle = ctx.decision_baseline.motivo
+    if peor:
+        detalle += (
+            " El baseline es significativamente mejor: la hipótesis no se sostiene "
+            "con estos datos (no se declara refutada, se declara sin apoyo)."
+        )
+    return ResultadoPrueba("T07", TITULOS["T07"], "PENDIENTE", detalle, datos)
 
 
 def t08_estabilidad(ctx: ContextoEvaluacion) -> ResultadoPrueba:
+    """Estabilidad del signo de la mejora entre particiones alternativas.
+
+    v1.1.0: el único estado de alarma es ``SENSIBLE``. Si la mejora no aparece
+    en ninguna partición, el estado es ``PENDIENTE``: no hay evidencia, no un
+    fallo demostrado.
+    """
     detalle = dict(ctx.estabilidad)
     ensayos = detalle.get("ensayos", [])
     if not ensayos:
@@ -384,13 +423,13 @@ def t08_estabilidad(ctx: ContextoEvaluacion) -> ResultadoPrueba:
         )
     if positivas == 0:
         return ResultadoPrueba(
-            "T08", TITULOS["T08"], "FALLIDO",
+            "T08", TITULOS["T08"], "PENDIENTE",
             f"En ninguna de las {len(mejoras)} particiones alternativas la "
-            "hipótesis mejora al baseline",
+            "hipótesis mejora al baseline: no hay evidencia de mejora estable",
             detalle,
         )
     return ResultadoPrueba(
-        "T08", TITULOS["T08"], "SENSIBLE_AL_DISENO",
+        "T08", TITULOS["T08"], "SENSIBLE",
         (
             f"El signo de la mejora cambia con la partición: {positivas} positivas "
             f"y {negativas} no positivas de {len(mejoras)}. La conclusión depende del "

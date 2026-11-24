@@ -22,17 +22,15 @@ COLOR_ESTADO: dict[str, str] = {
     "APROBADO": "#15803d",
     "FALLIDO": "#b91c1c",
     "PENDIENTE": "#a16207",
-    "NO_APLICABLE": "#475569",
-    "NO_PRESENTADA": "#6d28d9",
-    "SENSIBLE_AL_DISENO": "#c2410c",
+    "SENSIBLE": "#c2410c",
 }
 
 COLOR_VEREDICTO: dict[str, str] = {
     "CORROBORADA_PROVISIONAL": "#15803d",
+    "PRELIMINAR": "#a16207",
     "NO_CORROBORADA": "#b91c1c",
-    "REFUTADA": "#7f1d1d",
     "NO_PRESENTADA": "#6d28d9",
-    "SENSIBLE_AL_DISENO": "#c2410c",
+    "SENSIBLE": "#c2410c",
     "FUERA_DE_DOMINIO": "#475569",
     "PENDIENTE": "#a16207",
 }
@@ -41,17 +39,15 @@ ETIQUETA_ESTADO: dict[str, str] = {
     "APROBADO": "Aprobado",
     "FALLIDO": "Fallido",
     "PENDIENTE": "Pendiente",
-    "NO_APLICABLE": "No aplicable",
-    "NO_PRESENTADA": "No presentada",
-    "SENSIBLE_AL_DISENO": "Sensible al diseño",
+    "SENSIBLE": "Sensible",
 }
 
 ETIQUETA_VEREDICTO: dict[str, str] = {
     "CORROBORADA_PROVISIONAL": "Corroborada (provisional)",
+    "PRELIMINAR": "Preliminar",
     "NO_CORROBORADA": "No corroborada",
-    "REFUTADA": "Refutada",
     "NO_PRESENTADA": "No presentada",
-    "SENSIBLE_AL_DISENO": "Sensible al diseño",
+    "SENSIBLE": "Sensible al diseño",
     "FUERA_DE_DOMINIO": "Fuera de dominio",
     "PENDIENTE": "Pendiente",
 }
@@ -304,6 +300,31 @@ def _pagina(titulo: str, cuerpo: str) -> str:
 # --------------------------------------------------------------------------
 
 
+def _seccion_viabilidad(d: Mapping[str, Any]) -> str:
+    """Avisos calculados antes de ejecutar la batería. No cambian el veredicto."""
+    avisos = d.get("viabilidad") or []
+    if not avisos:
+        return (
+            '<p class="vacio">Sin avisos: el diseño declarado no presenta '
+            "problemas evidentes de viabilidad.</p>"
+        )
+    colores = {"alta": "#b91c1c", "media": "#a16207", "baja": "#475569"}
+    filas = "".join(
+        f"<tr><td class='codigo'>{_e(a.get('codigo'))}</td>"
+        f"<td><span class='badge' style=\"background:{colores.get(str(a.get('severidad')), '#475569')}\">"
+        f"{_e(a.get('severidad'))}</span></td>"
+        f"<td>{_e(a.get('mensaje'))}</td><td>{_e(a.get('detalle'))}</td></tr>"
+        for a in avisos
+    )
+    return (
+        "<table><tr><th>código</th><th>severidad</th><th>aviso</th>"
+        f"<th>detalle</th></tr>{filas}</table>"
+        '<p class="vacio">Se calculan antes de la corrida y no modifican el '
+        "veredicto: señalan diseños que difícilmente puedan sostener una "
+        "conclusión.</p>"
+    )
+
+
 def _seccion_pruebas(d: Mapping[str, Any], carpeta: Path) -> str:
     """Una tarjeta por prueba, con su resultado y su gráfico."""
     predicciones = _leer_predicciones(carpeta)
@@ -408,6 +429,9 @@ def _pagina_corrida(
   <p>{_e(v['motivo'])}</p>
   <p class="vacio">{_e(v['descripcion'])}</p>
 
+  <h2>Advertencias de viabilidad (antes de la batería)</h2>
+  {_seccion_viabilidad(d)}
+
   <h2>Hipótesis y predicción diferenciadora</h2>
   <p>{_e(h['enunciado'])}</p>
   <p><strong>Predicción diferenciadora:</strong> {_e(h['prediccion_diferenciadora'])}</p>
@@ -424,6 +448,10 @@ def _pagina_corrida(
     <tr><td>reservado</td><td>{_num(comp['error_reservado'].get('hipotesis'), 6)}</td>
         <td>{_num(comp['error_reservado'].get('baseline'), 6)}</td><td>{_e(h['metrica'])}</td></tr>
   </table>
+  <p class="vacio">Error de la hipótesis frente al baseline:
+  <strong>{_e(comp.get('ratio_errores_texto') or '—')}</strong>. Una mejora de
+  +0.99 significa que el error de la hipótesis es ~1 % del error del baseline,
+  no que el modelo sea casi perfecto.</p>
 
   <h2>Pruebas ejecutadas y sus resultados</h2>
   <p class="vacio">Cada tarjeta muestra el estado, el motivo y un gráfico propio
@@ -457,9 +485,9 @@ def _pagina_corrida(
   <h2>Preregistro y reproducibilidad</h2>
   <table>
     <tr><th>campo</th><th>valor</th></tr>
-    <tr><td>sello de preregistro</td><td>{'existe' if pr.get('existe') else 'no existe'}</td></tr>
-    <tr><td>coincide con la firma actual</td><td>{'sí' if pr.get('coincide') else 'no'}</td></tr>
-    <tr><td>creado durante la evaluación (tardío)</td><td>{'sí' if pr.get('tardio') else 'no'}</td></tr>
+    <tr><td>estado del preregistro</td><td><code>{_e(pr.get('estado_preregistro'))}</code></td></tr>
+    <tr><td>antigüedad del sello</td><td>{_num(pr.get('antiguedad_segundos'), 1)} s (mínimo exigido {_num(pr.get('separacion_minima'), 0)})</td></tr>
+    <tr><td>publicado en git</td><td>{_e(pr.get('publicado_utc') or 'no')}</td></tr>
     <tr><td>firma</td><td><code>{_e(pr.get('firma_actual'))}</code></td></tr>
     <tr><td>predicción idéntica en dos ejecuciones</td><td>{'sí' if r.get('prediccion_identica') else 'no'}</td></tr>
   </table>
@@ -562,8 +590,9 @@ def _pagina_catalogo(ultimas: Mapping[str, Mapping[str, Any]], panel: Path) -> s
   <h2>Pruebas del protocolo (vinculantes)</h2>
   <p class="vacio">Las doce pruebas que forman el veredicto. La columna
   «cuándo no se requiere» explica en qué caso legítimo una prueba no llega a
-  ejecutarse; en ese caso el estado sería NO_APLICABLE o PENDIENTE, nunca
-  APROBADO por omisión.</p>
+  ejecutarse; en ese caso el estado sería PENDIENTE, nunca APROBADO por
+  omisión. La única excepción es el caso vacuo (T05 sin parámetros libres),
+  que se aprueba y se marca como tal.</p>
   <table>
     <tr><th>código</th><th>prueba</th><th>propósito</th>
         <th>cuándo no se requiere</th>{encabezados}</tr>
@@ -674,7 +703,7 @@ def generar_panel(
             v = c.get("veredicto", {})
             i = c.get("comparacion", {}).get("intervalo", {})
             fallidas = [p["codigo"] for p in c.get("pruebas", [])
-                        if p["estado"] in ("FALLIDO", "NO_PRESENTADA", "SENSIBLE_AL_DISENO")]
+                        if p["estado"] in ("FALLIDO", "SENSIBLE")]
             tarjetas.append(f"""
     <article class="tarjeta">
       <div class="id">{_e(id_)} · v{_e(h.get('version'))}</div>

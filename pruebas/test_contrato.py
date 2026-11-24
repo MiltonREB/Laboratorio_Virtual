@@ -74,9 +74,18 @@ class TestContratoHipotesis(unittest.TestCase):
         faltas = hipotesis_con(umbral_mejora=1.5).problemas_de_contrato()
         self.assertTrue(any("umbral_mejora" in f for f in faltas))
 
-    def test_detecta_sensibilidad_no_positiva(self):
-        faltas = hipotesis_con(umbral_sensibilidad=0.0).problemas_de_contrato()
+    def test_detecta_sensibilidad_negativa(self):
+        faltas = hipotesis_con(umbral_sensibilidad=-1.0).problemas_de_contrato()
         self.assertTrue(any("umbral_sensibilidad" in f for f in faltas))
+
+    def test_sensibilidad_ausente_o_cero_es_valida(self):
+        for valor in (None, 0.0):
+            faltas = hipotesis_con(umbral_sensibilidad=valor).problemas_de_contrato()
+            self.assertFalse(any("umbral_sensibilidad" in f for f in faltas), valor)
+
+    def test_detecta_factor_de_diferenciacion_invalido(self):
+        faltas = hipotesis_con(factor_diferenciacion=0.0).problemas_de_contrato()
+        self.assertTrue(any("factor_diferenciacion" in f for f in faltas))
 
     def test_detecta_parametro_sin_unidad(self):
         h = hipotesis_con()

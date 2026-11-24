@@ -19,13 +19,20 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from . import catalogo, metricas
+from . import catalogo, metricas, viabilidad
 from .contrato import Hipotesis, Modelo, ResultadoPrueba, verificar_salida
 from .datos import ConjuntoDatos, ErrorDeDatos, Manifiesto
 from .preregistro import Verificacion, diferencias, firmar, sellar, verificar
 from .protocolo import ContextoEvaluacion, ejecutar_pruebas
 from .registro import Registro
 from .veredicto import Veredicto, agregar
+
+#: Versión del protocolo y del paquete.
+VERSION_PROTOCOLO = "1.1.0"
+
+#: Separación mínima por defecto entre el sello y la corrida, en segundos.
+#: Sellar y evaluar en el mismo instante no acredita anterioridad.
+SEPARACION_MINIMA_POR_DEFECTO = 60.0
 
 #: Remuestreos por defecto del bootstrap.
 REMUESTREOS_POR_DEFECTO = 2000
@@ -34,9 +41,10 @@ PARTICIONES_POR_DEFECTO = 5
 
 #: Versión del esquema de ``resumen.json``. Se incrementa cuando un campo
 #: cambia de significado o desaparece; añadir campos nuevos no obliga.
-ESQUEMA_RESUMEN = "1.1"
-#: Esquemas que este código sabe leer.
-ESQUEMAS_COMPATIBLES: tuple[str, ...] = ("1.0", "1.1")
+ESQUEMA_RESUMEN = "1.2"
+#: Esquemas que este código sabe leer. 1.1 usaba otro vocabulario de estados,
+#: así que no es comparable: se marca en lugar de interpretarse en silencio.
+ESQUEMAS_COMPATIBLES: tuple[str, ...] = ("1.2",)
 
 
 def esquema_compatible(version: object) -> bool:
@@ -78,6 +86,8 @@ def evaluar_hipotesis(
     sellar_si_falta: bool = True,
     sensibilidad_bootstrap: bool = False,
     hipotesis_mismo_dataset: int = 0,
+    separacion_minima: float = SEPARACION_MINIMA_POR_DEFECTO,
+    exigir_publicacion: bool = False,
 ) -> ResultadoEvaluacion:
     """Evalúa una hipótesis completa y (por defecto) escribe los artefactos."""
     raiz = Path(raiz_resultados)
@@ -102,17 +112,32 @@ def evaluar_hipotesis(
     assert baseline is not None  # garantizado por _precondiciones
 
     # -- preregistro ---------------------------------------------------
-    verif = verificar(hipotesis, raiz)
+    verif = verificar(
+        hipotesis,
+        raiz,
+        separacion_minima=separacion_minima,
+        exigir_publicacion=exigir_publicacion,
+    )
     advertencias: list[str] = []
     if not verif.existe and sellar_si_falta:
         sellar(hipotesis, raiz, tardio=True)
-        verif = verificar(hipotesis, raiz)
+        verif = verificar(
+            hipotesis,
+            raiz,
+            separacion_minima=separacion_minima,
+            exigir_publicacion=exigir_publicacion,
+        )
         advertencias.append(
             "No existía sello de preregistro: se creó uno durante la evaluación y "
             "se marca como tardío (T04 no lo aceptará)."
         )
+    if verif.existe and verif.estado_preregistro == "RECIENTE":
+        advertencias.append(
+            "El sello existe pero es más reciente que la separación mínima exigida: "
+            "no acredita que los umbrales fueran anteriores a los datos."
+        )
     cambios_firma: list[str] = []
-    if verif.existe and not verif.coincide:
+    if verif.estado_preregistro == "ALTERADO":
         from .preregistro import ultimo_sello
 
         previo = ultimo_sello(raiz, hipotesis.id)
@@ -213,7 +238,8 @@ def evaluar_hipotesis(
             manifiesto=manifiesto,
         ),
     )
-    veredicto = agregar(pruebas)
+    veredicto = agregar(pruebas, verificaciones)
+    avisos_viabilidad = viabilidad.evaluar(hipotesis, dataset, verif)
 
     corrida = _carpeta_corrida(raiz, hipotesis.id) if guardar else Path()
     datos = _resumen(
@@ -237,6 +263,7 @@ def evaluar_hipotesis(
         remuestreos=remuestreos,
         particiones=particiones,
         verificaciones=verificaciones,
+        viabilidad=avisos_viabilidad,
     )
 
     resultado = ResultadoEvaluacion(hipotesis.id, corrida, veredicto, pruebas, datos)
@@ -523,9 +550,15 @@ def _resumen(**kw: Any) -> dict[str, Any]:
     intervalo: metricas.Intervalo = kw["intervalo"]
     decision: metricas.Decision = kw["decision"]
     verif: Verificacion = kw["verif"]
+    eh = ctx.errores_reservado.get("hipotesis")
+    eb = ctx.errores_reservado.get("baseline")
+    ratio = metricas.ratio_errores(float(eh), float(eb)) if (
+        eh is not None and eb is not None
+    ) else None
     return {
         "schema_version": ESQUEMA_RESUMEN,
-        "version_laboratorio": "1.0.0",
+        "version_laboratorio": VERSION_PROTOCOLO,
+        "version_protocolo": VERSION_PROTOCOLO,
         "hipotesis": {
             "id": h.id,
             "nombre": h.nombre,
@@ -569,6 +602,8 @@ def _resumen(**kw: Any) -> dict[str, Any]:
             "decision": {"estado": decision.estado, "motivo": decision.motivo},
             "error_calibracion": ctx.errores_calibracion,
             "error_reservado": ctx.errores_reservado,
+            "ratio_errores": ratio,
+            "ratio_errores_texto": metricas.formatear_ratio(ratio),
             "delta_max_abs": float(np.max(np.abs(ctx.delta_reservado)))
             if ctx.delta_reservado.size else None,
         },
@@ -578,6 +613,7 @@ def _resumen(**kw: Any) -> dict[str, Any]:
         "preregistro": verif.como_dict(),
         "pruebas": [p.como_dict() for p in kw["pruebas"]],
         "verificaciones": [v.como_dict() for v in kw["verificaciones"]],
+        "viabilidad": [a.como_dict() for a in kw["viabilidad"]],
         "veredicto": veredicto.como_dict(),
         "advertencias": list(kw["advertencias"]),
         "configuracion": {

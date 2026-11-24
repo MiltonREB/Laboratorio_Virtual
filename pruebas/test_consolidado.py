@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import lab
@@ -27,7 +28,10 @@ def _evaluar(id_, destino, remuestreos=200, particiones=1):
     registro = cargar_registro(RAIZ / "hipotesis")
     manifiesto = Manifiesto.desde_directorio(RAIZ / "datos")
     hipotesis = registro.obtener(id_)
-    preregistro.sellar(hipotesis, destino)
+    preregistro.sellar(
+        hipotesis, destino,
+        momento=datetime.now(timezone.utc) - timedelta(hours=1),
+    )
     return evaluar_hipotesis(
         hipotesis, manifiesto, destino,
         remuestreos=remuestreos, particiones=particiones,
@@ -78,7 +82,7 @@ class TestConsolidado(unittest.TestCase):
 
         ruta = consolidado.generar_informe(destino)
         texto = ruta.read_text(encoding="utf-8")
-        self.assertIn("CORROBORADA_PROVISIONAL", texto)
+        self.assertIn("PRELIMINAR", texto)
         self.assertIn("NO_CORROBORADA", texto)
         self.assertIn("pendulo_amplitud", texto)
         self.assertIn("Matriz de pruebas", texto)

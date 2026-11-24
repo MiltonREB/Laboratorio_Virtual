@@ -23,9 +23,15 @@ class TestDefiniciones(unittest.TestCase):
     def test_cinco_verificaciones_opcionales(self):
         self.assertEqual(len(catalogo.VERIFICACIONES_OPCIONALES), 5)
 
-    def test_opcionales_no_son_vinculantes(self):
-        for definicion in catalogo.VERIFICACIONES_OPCIONALES:
-            self.assertFalse(definicion.vinculante, definicion.codigo)
+    def test_o01_y_o04_son_vinculantes(self):
+        por_codigo = {d.codigo: d for d in catalogo.VERIFICACIONES_OPCIONALES}
+        self.assertTrue(por_codigo["O01"].vinculante)
+        self.assertTrue(por_codigo["O04"].vinculante)
+
+    def test_o02_o03_y_o05_no_son_vinculantes(self):
+        por_codigo = {d.codigo: d for d in catalogo.VERIFICACIONES_OPCIONALES}
+        for codigo in ("O02", "O03", "O05"):
+            self.assertFalse(por_codigo[codigo].vinculante, codigo)
 
     def test_toda_definicion_tiene_proposito_y_condicion(self):
         for definicion in catalogo.definiciones().values():

@@ -24,21 +24,20 @@ from typing import Callable, Iterable, Mapping, Sequence
 
 import numpy as np
 
-#: Estados posibles de una prueba o de un veredicto global.
-ESTADOS: tuple[str, ...] = (
-    "APROBADO",
-    "FALLIDO",
-    "PENDIENTE",
-    "NO_APLICABLE",
-    "NO_PRESENTADA",
-    "SENSIBLE_AL_DISENO",
-)
+#: Estados posibles de una prueba del protocolo (v1.1.0).
+#:
+#: Se reducen a cuatro a propósito. ``APROBADO`` incluye el caso vacuo (la
+#: prueba no tiene sujeto, p. ej. T05 sin parámetros libres): una exigencia
+#: sobre el conjunto vacío se cumple, y el informe lo marca como «vacuo».
+#: No existe un estado «no presentada»: eso es ``PENDIENTE`` con la marca
+#: :attr:`ResultadoPrueba.es_ausencia`.
+ESTADOS: tuple[str, ...] = ("APROBADO", "PENDIENTE", "SENSIBLE", "FALLIDO")
 
 #: Métricas admitidas por el protocolo (ver ``lab.metricas``).
 METRICAS: tuple[str, ...] = ("rmse", "mae", "chi2_reducido")
 
 #: Estados que cuentan como "no bloqueante" al agregar el veredicto.
-ESTADOS_ACEPTABLES: frozenset[str] = frozenset({"APROBADO", "NO_APLICABLE"})
+ESTADOS_ACEPTABLES: frozenset[str] = frozenset({"APROBADO"})
 
 
 # --------------------------------------------------------------------------
@@ -110,13 +109,20 @@ class Dominio:
 
 @dataclass(frozen=True)
 class ResultadoPrueba:
-    """Resultado de una prueba del protocolo."""
+    """Resultado de una prueba del protocolo.
+
+    ``es_ausencia`` marca el caso en que no hay nada que contrastar (la
+    hipótesis coincide con el baseline, o su predicción no es falsable). No es
+    un quinto estado: es un matiz sobre ``PENDIENTE`` o ``FALLIDO`` que el
+    veredicto usa para distinguir «no se presentó» de «falta evidencia».
+    """
 
     codigo: str
     titulo: str
     estado: str
     detalle: str
     evidencia: Mapping[str, object] = field(default_factory=dict)
+    es_ausencia: bool = False
 
     def __post_init__(self) -> None:
         if self.estado not in ESTADOS:
@@ -129,6 +135,7 @@ class ResultadoPrueba:
             "estado": self.estado,
             "detalle": self.detalle,
             "evidencia": dict(self.evidencia),
+            "es_ausencia": self.es_ausencia,
         }
 
 
@@ -201,7 +208,11 @@ class Hipotesis(Modelo):
     metrica: str = "rmse"
     #: Mejora relativa mínima exigida frente al baseline (0.10 = 10 %).
     umbral_mejora: float | None = None
-    #: |ΔO| mínimo apreciable; por debajo, la predicción no es distinguible.
+    #: Cuántas veces el error del baseline debe superar |ΔO| como mínimo para
+    #: considerar que la predicción es distinguible (T03). Adimensional.
+    factor_diferenciacion: float = 1.0
+    #: Resolución instrumental absoluta, si existe (suelo opcional de T03).
+    #: ``None`` = no declarada; T03 se guía sólo por el factor anterior.
     umbral_sensibilidad: float | None = None
     #: Presupuesto de incertidumbre declarado para el observable (misma unidad).
     incertidumbre_declarada: float = float("nan")
@@ -267,10 +278,11 @@ class Hipotesis(Modelo):
         elif not (0.0 < float(self.umbral_mejora) < 1.0):
             fallos.append("umbral_mejora debe estar en (0, 1)")
 
-        if self.umbral_sensibilidad is None:
-            fallos.append("Falta 'umbral_sensibilidad'")
-        elif not (float(self.umbral_sensibilidad) > 0.0):
-            fallos.append("umbral_sensibilidad debe ser > 0")
+        if not (float(self.factor_diferenciacion) > 0.0):
+            fallos.append("factor_diferenciacion debe ser > 0")
+
+        if self.umbral_sensibilidad is not None and float(self.umbral_sensibilidad) < 0.0:
+            fallos.append("umbral_sensibilidad no puede ser negativo (usa None)")
 
         for p in self.parametros():
             if not str(p.unidad).strip():
@@ -285,6 +297,7 @@ class Hipotesis(Modelo):
             "version": self.version,
             "metrica": self.metrica,
             "umbral_mejora": self.umbral_mejora,
+            "factor_diferenciacion": self.factor_diferenciacion,
             "umbral_sensibilidad": self.umbral_sensibilidad,
             "incertidumbre_declarada": (
                 None if not np.isfinite(self.incertidumbre_declarada)

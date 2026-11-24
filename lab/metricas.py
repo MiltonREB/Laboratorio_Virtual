@@ -85,6 +85,24 @@ def mejora_relativa(error_baseline: float, error_hipotesis: float) -> float:
     return float(1.0 - (error_hipotesis / error_baseline))
 
 
+def ratio_errores(error_hipotesis: float, error_baseline: float) -> float | None:
+    """ε_hip / ε_base. Acompaña a la mejora porque ésta sola se malinterpreta."""
+    if not np.isfinite(error_baseline) or error_baseline <= 0:
+        return None
+    return float(error_hipotesis / error_baseline)
+
+
+def formatear_ratio(ratio: float | None) -> str:
+    """'1/109' cuando el ratio es pequeño y positivo; si no, decimal."""
+    if ratio is None or not np.isfinite(ratio):
+        return "—"
+    if ratio <= 0:
+        return f"{ratio:.3g}"
+    if ratio < 0.5:
+        return f"1/{1.0 / ratio:.0f}"
+    return f"{ratio:.3g}"
+
+
 # --------------------------------------------------------------------------
 # Bootstrap
 # --------------------------------------------------------------------------

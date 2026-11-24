@@ -1,34 +1,40 @@
-# Protocolo del laboratorio de hipótesis (v1.0)
+# Protocolo del laboratorio de hipótesis (v1.1.0)
 
 Documento normativo. Define qué se exige, cómo se decide y qué no se permite.
-El código que lo implementa está en `lab/protocolo.py` y `lab/veredicto.py`; si
-alguna vez discrepan, este documento y el código deben corregirse juntos.
+El código que lo implementa está en `lab/protocolo.py`, `lab/veredicto.py` y
+`lab/viabilidad.py`; si alguna vez discrepan, este documento y el código deben
+corregirse juntos.
+
+**Cambios respecto a v1.0.0:** ver
+[CHANGELOG_METODOLOGICO.md](CHANGELOG_METODOLOGICO.md).
 
 ## 1. Alcance
 
 El protocolo sirve para contrastar **una hipótesis cuantitativa** contra **un
-baseline convencional** sobre **un conjunto de datos congelado y particionado**.
-No sirve para descubrir hipótesis, ni para elegir la que mejor se ajusta entre
-muchas (eso exige corrección por comparaciones múltiples, que aquí no se aplica).
+baseline convencional** sobre **un conjunto de datos congelado y particionado**,
+y para saber si esa corroboración merece ese nombre o es sólo un resultado
+preliminar. No sirve para descubrir hipótesis, ni para elegir la mejor entre
+muchas (eso exige corrección por comparaciones múltiples).
 
 ## 2. Principios
 
 1. **Nada se decide después de ver los datos.** Métrica, umbral de mejora,
-   umbral de sensibilidad, presupuesto de incertidumbre y semilla se congelan por
-   escrito antes de evaluar. Cambiarlos invalida el preregistro (T04).
+   factor de diferenciación, presupuesto de incertidumbre y semilla se congelan
+   por escrito antes de evaluar, y con una separación temporal mínima.
 2. **La muestra reservada no se toca.** El ajuste de cualquier parámetro libre
-   ocurre sólo con la partición de calibración. Las particiones se declaran en el
-   manifiesto; el laboratorio no las sortea.
+   ocurre sólo con la partición de calibración.
 3. **Sin baseline no hay resultado.** Una hipótesis sólo aporta algo si mejora a
-   un modelo convencional explícito. Ganar a la nada no cuenta.
+   un modelo convencional explícito.
 4. **Una mejora sin intervalo no es una mejora.** Se exige que el intervalo de
    confianza del 95 % de la mejora excluya el cero por arriba.
-5. **Se distingue «no concluyente» de «falso».** `PENDIENTE` no es
-   `NO_CORROBORADA`; un fracaso sólo se declara con evidencia.
-6. **Toda prueba imposible de verificar devuelve `PENDIENTE`.** Nunca se rellena
+5. **La ventaja tiene que sobrevivir al baseline elegido y al diseño.** Si sólo
+   aparece frente a un baseline concreto, o sólo con una partición concreta, no
+   se corrobora: se declara preliminar o sensible.
+6. **Se distingue «no concluyente» de «falso».** Cuatro estados de prueba; ningún
+   veredicto se llama «refutada».
+7. **Toda prueba imposible de verificar devuelve `PENDIENTE`.** Nunca se rellena
    un hueco con una aprobación tácita.
-7. **El informe publica lo que el experimento no demuestra.** La sección 11 del
-   informe es obligatoria.
+8. **El informe publica lo que el experimento no demuestra.**
 
 ## 3. Vocabulario
 
@@ -36,268 +42,241 @@ muchas (eso exige corrección por comparaciones múltiples, que aquí no se apli
 |---|---|
 | **Modelo** | Función pura `variables → observables`, con parámetros declarados |
 | **Baseline** | Modelo convencional de referencia; no puede ser la propia hipótesis |
+| **Baseline alternativo** | Segundo (o tercer) modelo de referencia contra el que también hay que ganar (O01) |
 | **Hipótesis** | Modelo + enunciado falsable + dominio + predicción diferenciadora + umbrales |
 | **Observable objetivo** | La única magnitud que se compara contra el baseline |
-| **Calibración** | Filas usadas para ajustar parámetros libres |
-| **Reservado** | Filas que no participan en ningún ajuste y sostienen el veredicto |
-| **Umbral de mejora** | Mejora relativa mínima exigida frente al baseline (p. ej. 0.10 = 10 %) |
-| **Umbral de sensibilidad** | \|ΔO\| mínimo apreciable; por debajo, la predicción no es distinguible |
-| **Presupuesto de incertidumbre** | Error típico declarado para el observable, en su unidad |
+| **Calibración / reservado** | Filas para ajustar / filas que sostienen el veredicto |
+| **Umbral de mejora** | Mejora relativa mínima exigida frente al baseline |
+| **Factor de diferenciación** | Cuántas veces el error del baseline debe superar \|ΔO\| para considerarlo distinguible |
 | **ΔO** | Diferencia entre la predicción de la hipótesis y la del baseline |
+| **Holdout externo** | Dataset independiente con el que se comprueba que la mejora no es del diseño (O04) |
 
 ## 4. Las doce pruebas
 
-Cada prueba devuelve uno de seis estados: `APROBADO`, `FALLIDO`, `PENDIENTE`,
-`NO_APLICABLE`, `NO_PRESENTADA`, `SENSIBLE_AL_DISENO`.
+Cuatro estados posibles: `APROBADO`, `PENDIENTE`, `SENSIBLE`, `FALLIDO`.
 
 ### T01 — Formalización del contrato
 
-**Comprueba** que existan: `id`, `nombre`, `version`, `enunciado`,
+Comprueba que existan `id`, `nombre`, `version`, `enunciado`,
 `prediccion_diferenciadora`, `observable_objetivo` con unidad, `observables`,
 `requiere`, `dominio` con rango no vacío, `baseline` distinto de la hipótesis,
-`dataset_id`, `metrica` admitida, `umbral_mejora` en (0,1), `umbral_sensibilidad`
-> 0, y unidad en todos los parámetros.
+`dataset_id`, `metrica` admitida, `umbral_mejora` en (0,1) y
+`factor_diferenciacion` > 0, y unidad en todos los parámetros.
 
-**Falla** si falta cualquiera. **Corrección**: completar el metadato. No hay
-forma de aprobar T01 por defecto.
+`umbral_sensibilidad` es **opcional**: si se declara, actúa como suelo absoluto
+(por ejemplo, la resolución del instrumento).
 
 ### T02 — Falsabilidad
 
-**Comprueba** que la predicción sobre la muestra reservada sea finita, no vacía y
-no constante. Una predicción constante no distingue ninguna fila y no puede
-falsarse con estos datos.
+La predicción sobre el reservado debe ser finita, no vacía y no constante. Si no
+lo es, `FALLIDO` con la marca de ausencia: no hay nada que contrastar.
 
-**Falla** si hay `NaN`/`inf`, si el arreglo está vacío o si su rango es cero.
+### T03 — Predicción diferenciadora (reformulada en v1.1.0)
 
-### T03 — Predicción diferenciadora
+**Criterio.** Sea `ε_base` el error del baseline sobre la muestra reservada. Se
+exige:
 
-**Comprueba** que ΔO exista y supere el umbral de sensibilidad declarado.
+```
+max|ΔO| ≥ max( factor_diferenciacion × ε_base , umbral_sensibilidad )
+```
 
-- ΔO ≡ 0 → `NO_PRESENTADA` («predice lo mismo que el baseline»).
-- máx\|ΔO\| < umbral de sensibilidad → `NO_PRESENTADA` («no observable con este
-  diseño»).
-- En otro caso → `APROBADO`.
+`factor_diferenciacion` es adimensional y lo declara la hipótesis (por defecto
+1.0). Ya no se compara contra una tolerancia absoluta: una tolerancia fija en
+segundos puede cumplirse con una diferencia que en la práctica es ruido, o
+rechazar una diferencia grande medida en otra unidad.
 
-`NO_PRESENTADA` no es un fallo moral: es la información de que la idea todavía
-no es contrastable con los medios declarados.
+- `max|ΔO| = 0` → `PENDIENTE` con marca de ausencia.
+- Por debajo de lo exigido → `PENDIENTE` con marca de ausencia.
+- En otro caso → `APROBADO`, y el informe dice cuántas veces `ε_base` supone.
+
+Ejemplo real del repositorio: en la hipótesis del polinomio, `max|ΔO| = 6.2 ms`
+frente a `ε_base = 0.82 ms`; son 7.5 veces la escala, así que **pasa** T03 con
+el criterio nuevo. Su rechazo viene de T07 y T08, que es donde corresponde. La
+reformulación no está pensada para que esa hipótesis falle, sino para que el
+criterio signifique algo.
 
 ### T04 — Preregistro
 
-**Comprueba** la firma SHA-256 de la instantánea `firma_de_parametros()`
-(identidad, versión, métrica, umbrales, semilla, observable, dataset y cada
-parámetro con su unidad y su estado) contra el último sello.
+Produce **un solo estado semántico**, `estado_preregistro`:
 
-| Situación | Estado |
-|---|---|
-| No hay sello | `PENDIENTE` |
-| Hay sello y coincide, creado por `lab preregistrar` | `APROBADO` |
-| Hay sello y coincide, creado durante la evaluación | `PENDIENTE` (tardío) |
-| Hay sello y no coincide | `FALLIDO` |
+| Estado | Significado | Estado de la prueba |
+|---|---|---|
+| `VALIDO` | Sello que coincide, con antigüedad suficiente y publicado si se exige | `APROBADO` |
+| `AUSENTE` | No hay sello | `PENDIENTE` |
+| `TARDIO` | Sello creado durante la evaluación | `PENDIENTE` |
+| `RECIENTE` | Sello más joven que la separación mínima | `PENDIENTE` |
+| `NO_PUBLICADO` | Se exigió publicación y el sello no está en un commit | `PENDIENTE` |
+| `ALTERADO` | La firma actual no coincide con la sellada | `FALLIDO` |
 
-`FALLIDO` aquí no significa que los datos contradigan la hipótesis: significa que
-el resultado **no es interpretable** porque el umbral se movió después.
+Separación temporal: `lab ejecutar` exige 60 s por defecto entre el sello y la
+corrida (`--separacion-minima`). Con `--exigir-publicacion`, además, el sello
+debe estar en un commit de git, que aporta una fecha externa verificable.
 
 ### T05 — Calibración
 
-- Sin parámetros libres → `NO_APLICABLE` (no hay ajuste que aislar).
-- Con parámetros libres pero sin ajuste efectivo → `FALLIDO`.
-- Particiones que se solapan → `FALLIDO` (contaminación).
-- Ajuste hecho sólo con calibración → `APROBADO`.
+- Particiones solapadas → `FALLIDO`.
+- Con parámetros libres y sin ajuste efectivo → `FALLIDO`.
+- Sin parámetros libres → `APROBADO` **vacuo**, marcado en la evidencia. Una
+  exigencia sobre el conjunto vacío se cumple; el informe lo dice.
+- Ajuste sólo con calibración → `APROBADO`.
 
 ### T06 — Validación fuera de muestra
 
-**Comprueba** que el error sobre el reservado sea finito y no exceda
-`5 × escala`, donde la escala es la incertidumbre declarada o, si no consta, el
-error del baseline en reservado. Es un control de generalización, no de mérito:
-un modelo puede generalizar y aun así no superar al baseline (eso lo decide T07).
+El error sobre el reservado debe ser finito y no exceder `5 × escala`, donde la
+escala es la incertidumbre declarada o el error del baseline. Es un control de
+generalización, no de mérito: eso lo decide T07.
 
 ### T07 — Comparación con el baseline
 
-Es la prueba central. Se calcula la mejora relativa `1 − ε_hip/ε_base` sobre el
+Prueba central. Se calcula la mejora relativa `1 − ε_hip/ε_base` sobre el
 reservado y su intervalo percentil del 95 % por bootstrap de filas.
 
 | Condición | Estado |
 |---|---|
 | mejora ≥ umbral **y** IC inferior > 0 | `APROBADO` |
-| IC superior < 0 | `FALLIDO` |
-| resto | `PENDIENTE` |
+| cualquier otra | `PENDIENTE` |
 
-El umbral lo fija la hipótesis, no el laboratorio. Elegirlo después de ver el
-resultado es exactamente lo que T04 detecta.
+**Nunca `FALLIDO`.** Que el baseline sea significativamente mejor no refuta la
+hipótesis: dice que este diseño no la sostiene. El hecho se registra en
+`peor_que_baseline` y el veredicto lo convierte en `NO_CORROBORADA`.
+
+Cada resultado de T07 incluye el **ratio de errores** `ε_hip/ε_base`, porque la
+mejora normalizada sola se malinterpreta: «+0.99» no significa «casi perfecto»,
+significa «el baseline es 100 veces peor».
 
 ### T08 — Estabilidad de la conclusión
 
-Se repiten `particiones` particiones alternativas (40 % reservado, semillas
-derivadas de `semilla`) y se recalcula la mejora en cada una.
+Se repiten particiones alternativas y se recalcula la mejora.
 
 - Todas positivas → `APROBADO`.
-- Ninguna positiva → `FALLIDO`.
-- Cambia el signo → `SENSIBLE_AL_DISENO`.
+- Ninguna positiva → `PENDIENTE` (no hay evidencia de mejora estable).
+- Cambia el signo → `SENSIBLE`.
 
-Esta prueba es la respuesta directa al problema de «cambia el ganador según cómo
-partas los datos»: si eso ocurre, el veredicto lo dice en lugar de ocultarlo.
+**Nunca `FALLIDO`.**
 
 ### T09 — Reproducibilidad numérica
 
-Se ejecuta la predicción dos veces y el bootstrap dos veces con la misma semilla.
-Se comparan SHA-256 de los bytes (`float64` little-endian).
-
-Cualquier diferencia → `FALLIDO`. Si hay aleatoriedad no sembrada en el modelo o
-en el ajuste, aparece aquí.
+Predicción y bootstrap dos veces con la misma semilla; se comparan los bytes.
+Cualquier diferencia → `FALLIDO`.
 
 ### T10 — Presupuesto de incertidumbre
 
-- Sin presupuesto declarado → `PENDIENTE`.
-- error > 3 × declarado → `FALLIDO` (presupuesto subestimado).
-- error < declarado / 3 → `PENDIENTE` (presupuesto inflado; no informa).
-- En otro caso → `APROBADO`.
+Sin presupuesto → `PENDIENTE`. Error > 3 × declarado → `FALLIDO` (subestimado).
+Error < declarado / 3 → `PENDIENTE` (inflado). En otro caso → `APROBADO`.
 
 ### T11 — Control nulo
 
-Se generan datos sintéticos con el **baseline como verdad** y el mismo ruido, se
-repite el procedimiento completo (ajuste en calibración, comparación en
-reservado) y se mide la mejora.
-
-- La hipótesis alcanza su umbral con IC inferior > 0 → `FALLIDO`: su ventaja es
-  un artefacto de flexibilidad o de fuga de información.
-- En otro caso → `APROBADO`.
+Se generan datos con el baseline como verdad y el mismo ruido. Si la hipótesis
+alcanza su umbral ahí, su ventaja es un artefacto → `FALLIDO`.
 
 ### T12 — Dominio de validez
 
-Todas las filas evaluadas (calibración y reservado) deben caer dentro de
-`dominio.rango`. Cualquier variable fuera → `FALLIDO`.
+Todas las filas evaluadas deben caer dentro de `dominio.rango`. Cualquier
+variable fuera → `FALLIDO`. No se recorta en silencio.
 
-No se recorta ni se avisa: se rechaza, porque extrapolar en silencio es una de
-las formas más comunes de fabricar un resultado positivo.
+## 4.1 Verificaciones adicionales
 
-### 4.1 Verificaciones opcionales (O01–O05)
+Cinco comprobaciones que se registran con su motivo. **Dos son vinculantes**
+(O01 y O04): condicionan el veredicto máximo. Las otras tres son informativas.
 
-Además de las doce pruebas, el laboratorio puede ejecutar cinco verificaciones
-que **amplían el diagnóstico y no cambian el veredicto**. Existen porque hay
-preguntas razonables que no siempre se pueden responder con los datos
-disponibles; cuando no se pueden, el motivo queda escrito.
+| Código | Verificación | Vinculante | Se ejecuta cuando |
+|---|---|---|---|
+| O01 | Contraste con baselines alternativos | **Sí** | La hipótesis declara `baselines_alternativos` |
+| O02 | Validación por bloques del dominio | No | Hay ≥ 3 bloques de ≥ 10 filas reservadas |
+| O03 | Sensibilidad al número de remuestreos | No | Se pide con `--sensibilidad-bootstrap` |
+| O04 | Holdout externo | **Sí** | Declara `dataset_validacion` y existe en el manifiesto |
+| O05 | Corrección por comparaciones múltiples | No | Más de una hipótesis usa el dataset |
 
-| Código | Verificación | Se ejecuta cuando |
-|---|---|---|
-| O01 | Contraste con un baseline alternativo | La hipótesis declara `baselines_alternativos` |
-| O02 | Validación por bloques del dominio | Hay ≥ 3 bloques de ≥ 10 filas reservadas |
-| O03 | Sensibilidad al número de remuestreos | Se pide con `--sensibilidad-bootstrap` |
-| O04 | Holdout externo | La hipótesis declara `dataset_validacion` y existe en el manifiesto |
-| O05 | Corrección por comparaciones múltiples | Más de una hipótesis usa el mismo dataset |
+Estados de una verificación: `EJECUTADA`, `PENDIENTE`, `NO_REQUERIDA`.
+`NO_REQUERIDA` nunca equivale a superada: aparece con su motivo.
 
-Estados posibles de una verificación:
-
-| Estado | Significado |
-|---|---|
-| `EJECUTADA` | Se cumplió la precondición y hay resultado |
-| `NO_REQUERIDA` | La precondición no se cumple; se registra el motivo concreto |
-| `PENDIENTE` | Se declaró, pero no se pudo ejecutar (p. ej. el dataset no existe) |
-
-**Regla:** `NO_REQUERIDA` nunca equivale a superada. Aparece con su motivo en el
-informe, en la página de la corrida y en el catálogo del panel, para que no se
-pueda confundir con una prueba pasada.
-
-Cuando O05 se ejecuta, no se limita a avisar: recalcula el intervalo de la
-mejora con el nivel corregido por familia (Holm, α/n para la comparación más
-exigente) y declara si la conclusión **sobrevive** a la corrección. Sigue sin ser
-vinculante, porque cambiar el veredicto a posteriori sería justo lo que el
-protocolo prohíbe; lo que hace es poner el número delante.
-
-O01 informa por separado de cada baseline alternativo y dice explícitamente si
-la hipótesis **no** supera alguno. Un caso frecuente: ganar al baseline principal
-porque ese baseline es incompleto, y empatar con un modelo de referencia mejor.
-O04 compara sobre un dataset generado aparte, sin reajustar parámetros.
-
-Un caso típico y deliberado: la hipótesis de control negativo tiene 29 filas
-reservadas, así que O02 no se ejecuta porque tres bloques de diez no caben; la
-hipótesis de control positivo, con 96, sí la ejecuta y confirma que la mejora se
-mantiene en los tres tercios del dominio.
+**Por qué O01 y O04 son vinculantes.** La corrida de `pendulo_amplitud` lo
+mostró: la hipótesis mejoraba +0.99 frente al baseline principal, pero sólo
+−0.0004 frente a un modelo correcto de cuarto orden. Ese hallazgo, que rebaja el
+veredicto, estaba en una verificación informativa. Ahora una hipótesis que no
+supera a todos sus baselines alternativos —o que no tiene holdout externo— no
+puede pasar de `PRELIMINAR`.
 
 ## 5. Estados
 
 | Estado | Significado |
 |---|---|
-| `APROBADO` | El criterio se cumplió con evidencia disponible |
-| `FALLIDO` | El criterio no se cumplió |
-| `PENDIENTE` | Evidencia insuficiente o no verificable |
-| `NO_APLICABLE` | La prueba no corresponde a esta hipótesis (p. ej. T05 sin parámetros libres) |
-| `NO_PRESENTADA` | No hay predicción contrastable (T03) |
-| `SENSIBLE_AL_DISENO` | La conclusión depende de la partición (T08) |
+| `APROBADO` | El criterio se cumplió con evidencia disponible (incluye el caso vacuo, marcado) |
+| `PENDIENTE` | Evidencia insuficiente o criterio no alcanzado |
+| `SENSIBLE` | La conclusión depende de la partición de los datos |
+| `FALLIDO` | Se incumplió un requisito estructural (contrato, calibración, dominio, reproducibilidad) |
 
-`NO_APLICABLE` no es un aprobado disfrazado: se informa como tal y no cuenta como
-evidencia a favor.
+Ya no existen `NO_APLICABLE`, `NO_PRESENTADA` ni `SENSIBLE_AL_DISENO` como
+estados. El primer caso es un `APROBADO` vacuo; el segundo es un `PENDIENTE` con
+la marca `es_ausencia`; el tercero se llama `SENSIBLE`.
 
 ## 6. Agregación del veredicto
 
-Las reglas se aplican **en este orden** y la primera que se cumple decide:
+Reglas en orden; la primera que se cumple decide:
 
-1. `T02 = FALLIDO` o `T03 = NO_PRESENTADA` → **`NO_PRESENTADA`**
+1. Alguna prueba con `es_ausencia` → **`NO_PRESENTADA`**
 2. `T12 = FALLIDO` → **`FUERA_DE_DOMINIO`**
-3. `T06 = FALLIDO` o `T08 = FALLIDO` → **`NO_CORROBORADA`**
-4. `T07 = FALLIDO` → **`REFUTADA`**
-5. `T07 = PENDIENTE` → **`NO_CORROBORADA`**
-6. `T08 = SENSIBLE_AL_DISENO` → **`SENSIBLE_AL_DISENO`**
-7. `T04 = FALLIDO` → **`PENDIENTE`** (preregistro alterado)
-8. Alguna prueba bloqueante fuera de `APROBADO`/`NO_APLICABLE` → **`PENDIENTE`**
-9. Queda alguna prueba en `PENDIENTE` → **`PENDIENTE`**
-10. En otro caso → **`CORROBORADA_PROVISIONAL`**
+3. `T06 = FALLIDO` → **`NO_CORROBORADA`**
+4. `T07 ≠ APROBADO` → **`NO_CORROBORADA`**
+5. `T08 = SENSIBLE` → **`SENSIBLE`**
+6. `T04 = FALLIDO` → **`PENDIENTE`**
+7. Alguna bloqueante fuera de `APROBADO` → **`PENDIENTE`**
+8. O01 u O04 no ejecutadas → **`PRELIMINAR`**
+9. O01 ejecutada y `gana_a_todos = false` → **`PRELIMINAR`**
+10. O04 ejecutada y `supera_baseline = false` → **`NO_CORROBORADA`**
+11. En otro caso → **`CORROBORADA_PROVISIONAL`**
 
-Pruebas bloqueantes: T01, T02, T03, T04, T06, T07, T09, T10, T11, T12.
-T05 y T08 no son bloqueantes por sí mismas pero condicionan el resultado (pasos 3
-y 6).
+Las doce pruebas son bloqueantes. El orden no es arbitrario: primero se descarta
+lo que no es contrastable, luego lo que está fuera de dominio, después lo que
+falla, después lo que depende del diseño, y sólo al final se concede una
+corroboración **provisional**, y sólo si las verificaciones vinculantes la
+respaldan.
 
-El orden no es arbitrario: primero se descarta lo que no es contrastable, luego
-lo que está fuera de dominio, después lo que falla, y sólo al final se concede
-una corroboración **provisional**.
+## 7. Viabilidad previa a la corrida
 
-## 7. Prohibiciones
+Antes de ejecutar la batería se calculan avisos que **no cambian el veredicto** y
+ahorran corridas inútiles:
+
+| Código | Aviso |
+|---|---|
+| V01 | Demasiados parámetros libres para las filas de calibración (< 10 por parámetro) |
+| V02 | Muestra reservada por debajo de 30 filas |
+| V03 | El umbral de mejora exige menos que el ruido declarado |
+| V04 | El dominio no cubre los datos o declara variables ausentes |
+| V05 | No hay presupuesto de incertidumbre |
+| V06 | El preregistro no es válido (ausente, reciente, tardío, alterado, sin publicar) |
+
+## 8. Prohibiciones
 
 1. Elegir la tolerancia después de ver el resultado.
 2. Reutilizar filas reservadas para ajustar o para elegir el modelo.
 3. Extrapolar fuera del dominio declarado y presentarlo como resultado.
 4. Declarar `PENDIENTE` como aprobación, o promediar estados.
-5. Publicar el veredicto sin el informe completo.
-6. Usar la misma muestra para elegir entre varias hipótesis y luego evaluar la
-   elegida como si fuera única (fuera del alcance de v1.0).
+5. Presentar una mejora normalizada sin el ratio de errores.
+6. Sellar y evaluar en el mismo instante y llamarlo preregistro.
+7. Publicar el veredicto sin el informe completo.
 
-## 8. Trazabilidad
+## 9. Trazabilidad
 
 Cada corrida escribe en `resultados/<hipotesis>_<UTC>/`:
 
-- `resumen.json` — todo el cálculo, incluidos parámetros ajustados, intervalo,
-  ensayos de estabilidad, control nulo, verificación de preregistro, versión de
-  Python y NumPy, plataforma y SHA-256 del archivo de la hipótesis.
-- `INFORME.md` — informe con matriz de pruebas y límites.
+- `resumen.json` — todo el cálculo: parámetros ajustados, intervalo, ratio de
+  errores, ensayos de estabilidad, control nulo, verificaciones, avisos de
+  viabilidad, estado del preregistro, versión de Python y NumPy, plataforma y
+  SHA-256 del archivo de la hipótesis. Declara `schema_version` (1.2).
+- `INFORME.md` — informe con matriz de pruebas, verificaciones, viabilidad y
+  límites.
 - `matriz.csv`, `predicciones.csv` — datos crudos de la decisión.
 
-Los sellos de preregistro viven en `resultados/preregistro/<hipotesis>/` y no se
-sobrescriben: cada sello es un archivo nuevo con su marca temporal.
+Los sellos viven en `resultados/preregistro/<hipotesis>/` y no se sobrescriben.
 
-El panel se regenera con `lab panel` y deriva **todo** de esos archivos: la matriz
-de estados, una tarjeta con gráfico por prueba, las verificaciones opcionales con
-su motivo y el catálogo global. No hay datos embebidos ni cálculo en el navegador,
-así que el panel no puede afirmar nada que no esté en `resumen.json`.
-
-Cada `resumen.json` declara `schema_version`. Un archivo con un esquema que este
-código no reconoce no se descarta: se carga marcado como incompatible y el
-informe consolidado avisa antes de compararlo con los demás.
-
-`lab consolidado` produce un informe único con el resumen por hipótesis, la
-matriz de pruebas, lo que no se sostiene, las verificaciones ejecutadas y los
-avisos de familia. Incluye un aviso que ningún módulo individual puede dar:
-**cuántas corridas registra cada hipótesis**. Reevaluar hasta que salga positiva
-es la forma más común de fabricar un resultado, y ahí queda a la vista.
-
-## 9. Extender el protocolo
-
-Para añadir una prueba:
+## 10. Extender el protocolo
 
 1. Escribir la función en `lab/protocolo.py` con firma
    `(ContextoEvaluacion) -> ResultadoPrueba`.
 2. Añadir su código a `ORDEN` y su título a `TITULOS`.
-3. Decidir si es bloqueante y, si lo es, añadirla a `BLOQUEANTES`.
-4. Añadir la regla de agregación correspondiente en `lab/veredicto.py`, con su
-   motivo explícito.
-5. Añadir pruebas unitarias de sus tres o cuatro estados posibles.
+3. Añadirla a `BLOQUEANTES` si debe impedir la corroboración.
+4. Añadir su regla en `lab/veredicto.py`, con motivo explícito.
+5. Añadir pruebas unitarias de sus estados posibles, incluido el caso vacuo.
 
 Una prueba que no puede fallar no es una prueba.

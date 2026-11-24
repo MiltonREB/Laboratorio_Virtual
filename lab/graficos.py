@@ -203,7 +203,8 @@ def t03(resumen, predicciones, ancho=ANCHO_POR_DEFECTO, alto=ALTO_POR_DEFECTO) -
         return _sin_datos(ancho, alto, "Sin predicciones en la muestra reservada")
     deltas = [float(d["hipotesis"]) - float(d["baseline"]) for d in datos]
     evidencia = _evidencia(resumen, "T03")
-    umbral = float(evidencia.get("umbral_sensibilidad") or 0.0)
+    exigido = float(evidencia.get("exigido") or 0.0)
+    escala = evidencia.get("escala_baseline")
     lo, hi = _rango(deltas)
     x0, x1 = 14, ancho - 14
     y0, y1 = 26, alto - 32
@@ -211,10 +212,10 @@ def t03(resumen, predicciones, ancho=ANCHO_POR_DEFECTO, alto=ALTO_POR_DEFECTO) -
     partes.append(_texto(12, 18, "ΔO = hipótesis − baseline (por fila)", TEXTO, 10))
     if _dentro(0.0, lo, hi):
         partes.append(_ref_horizontal(_esc(0, lo, hi, y0, y1), x0, x1, EJE))
-    banda = _dentro(umbral, lo, hi) or _dentro(-umbral, lo, hi)
+    banda = _dentro(exigido, lo, hi) or _dentro(-exigido, lo, hi)
     if banda:
         for signo in (-1, 1):
-            y = _esc(signo * umbral, lo, hi, y0, y1)
+            y = _esc(signo * exigido, lo, hi, y0, y1)
             partes.append(_ref_horizontal(y, x0, x1, AMBAR, guion=True))
     puntos = []
     n = len(deltas)
@@ -226,8 +227,10 @@ def t03(resumen, predicciones, ancho=ANCHO_POR_DEFECTO, alto=ALTO_POR_DEFECTO) -
         f'<polyline points="{" ".join(puntos)}" fill="none" stroke="{AZUL}" '
         'stroke-width="1.3"/>'
     )
-    nota = (f"sensibilidad ±{_numero(umbral)}" if banda
-            else f"sensibilidad ±{_numero(umbral)} (fuera de escala)")
+    nota = (f"exigido ±{_numero(exigido)}" if banda
+            else f"exigido ±{_numero(exigido)} (fuera de escala)")
+    if escala is not None:
+        nota += f" · error baseline {_numero(escala)}"
     partes.append(_texto(ancho - 14, alto - 12, nota, AMBAR, 9, "end"))
     partes.append("</svg>")
     return "".join(partes)
@@ -241,24 +244,35 @@ def t03(resumen, predicciones, ancho=ANCHO_POR_DEFECTO, alto=ALTO_POR_DEFECTO) -
 def t04(resumen, predicciones, ancho=ANCHO_POR_DEFECTO, alto=ALTO_POR_DEFECTO) -> str:
     pr = resumen.get("preregistro") or {}
     partes = _lienzo(ancho, alto, "Estado del sello de preregistro")
-    existe = bool(pr.get("existe"))
-    coincide = bool(pr.get("coincide"))
-    tardio = bool(pr.get("tardio"))
-    color = VERDE if (existe and coincide and not tardio) else (AMBAR if existe else ROJO)
-    partes.append(f'<rect x="14" y="26" width="{ancho - 28}" height="70" rx="10" fill="#16233a" stroke="{color}" stroke-width="1.5"/>')
-    partes.append(_texto(28, 48, "sello SHA-256", TEXTO, 9))
+    estado = str(pr.get("estado_preregistro") or "AUSENTE")
+    color = {
+        "VALIDO": VERDE,
+        "ALTERADO": ROJO,
+        "AUSENTE": ROJO,
+        "TARDIO": AMBAR,
+        "RECIENTE": AMBAR,
+        "NO_PUBLICADO": AMBAR,
+    }.get(estado, GRIS)
+    partes.append(
+        f'<rect x="14" y="26" width="{ancho - 28}" height="70" rx="10" '
+        f'fill="#16233a" stroke="{color}" stroke-width="1.5"/>'
+    )
+    partes.append(_texto(28, 48, "estado del preregistro", TEXTO, 9))
+    partes.append(_texto(28, 70, estado, color, 15, "start", "700"))
     firma = str(pr.get("firma_actual") or "")
-    partes.append(_texto(28, 68, firma[:32] if firma else "sin firma", color, 11, "start", "600"))
-    partes.append(_texto(28, 84, firma[32:64] if len(firma) > 32 else "", color, 11, "start", "600"))
+    partes.append(_texto(28, 88, firma[:44] or "sin firma", color, 9))
+    edad = pr.get("antiguedad_segundos")
+    mins = pr.get("separacion_minima") or 0
     filas = [
-        ("existe", existe),
-        ("coincide con la firma actual", coincide),
-        ("creado durante la evaluación", tardio),
+        ("coincide con la firma actual", estado != "ALTERADO", estado != "ALTERADO"),
+        (f"antigüedad ≥ {_numero(mins, 0)} s",
+         (isinstance(edad, (int, float)) and edad >= float(mins)),
+         bool(pr.get("aceptable")) or estado in ("VALIDO",)),
+        ("publicado en git", bool(pr.get("publicado_utc")), bool(pr.get("publicado_utc"))),
     ]
-    y = 116
-    for etiqueta, ok in filas:
-        bien = (not ok) if etiqueta.startswith("creado") else ok
-        partes.append(f'<circle cx="20" cy="{y - 4}" r="4" fill="{VERDE if bien else ROJO}"/>')
+    y = 118
+    for etiqueta, ok, bien in filas:
+        partes.append(f'<circle cx="20" cy="{y - 4}" r="4" fill="{VERDE if bien else (ROJO if not ok else GRIS)}"/>')
         partes.append(_texto(32, y, etiqueta, TEXTO, 10))
         y += 22
     partes.append("</svg>")

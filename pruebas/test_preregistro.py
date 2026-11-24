@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from lab import preregistro
@@ -97,6 +98,91 @@ class TestSellado(unittest.TestCase):
     def test_diferencias_sin_cambios(self):
         firma = HipotesisDePrueba().firma_de_parametros()
         self.assertEqual(preregistro.diferencias(firma, firma), [])
+
+
+class TestSeparacionTemporal(unittest.TestCase):
+    """v1.1.0: sellar y evaluar en el mismo instante no acredita nada."""
+
+    def setUp(self):
+        self.raiz = espacio_temporal("separacion")
+
+    def _sellar(self, horas=0):
+        h = HipotesisDePrueba()
+        momento = datetime.now(timezone.utc) - timedelta(hours=horas)
+        preregistro.sellar(h, self.raiz, momento=momento)
+        return h
+
+    def test_sello_recien_creado_no_acredita_anterioridad(self):
+        h = self._sellar(horas=0)
+        v = preregistro.verificar(h, self.raiz, separacion_minima=60)
+        self.assertEqual(v.estado_preregistro, "RECIENTE")
+        self.assertFalse(v.aceptable)
+        self.assertIn("separación", preregistro.describir(v))
+
+    def test_sello_antiguo_es_valido(self):
+        h = self._sellar(horas=1)
+        v = preregistro.verificar(h, self.raiz, separacion_minima=60)
+        self.assertEqual(v.estado_preregistro, "VALIDO")
+        self.assertTrue(v.aceptable)
+        self.assertGreater(v.antiguedad_segundos, 3000)
+
+    def test_exigir_publicacion_sin_commit(self):
+        h = self._sellar(horas=1)
+        v = preregistro.verificar(
+            h, self.raiz, separacion_minima=60, exigir_publicacion=True
+        )
+        self.assertEqual(v.estado_preregistro, "NO_PUBLICADO")
+        self.assertFalse(v.aceptable)
+
+    def test_cambiar_la_firma_gana_a_la_antiguedad(self):
+        h = self._sellar(horas=1)
+        otra = hipotesis_con(umbral_mejora=0.5)
+        v = preregistro.verificar(otra, self.raiz, separacion_minima=60)
+        self.assertEqual(v.estado_preregistro, "ALTERADO")
+
+    def test_un_solo_campo_semantico(self):
+        h = self._sellar(horas=1)
+        v = preregistro.verificar(h, self.raiz, separacion_minima=60)
+        d = v.como_dict()
+        self.assertIn("estado_preregistro", d)
+        self.assertIn(d["estado_preregistro"], preregistro.ESTADOS_PREREGISTRO)
+        self.assertNotIn("estado", d)
+
+
+class TestPublicacionGit(unittest.TestCase):
+    def setUp(self):
+        self.raiz = espacio_temporal("git")
+        self._git("init", "-q")
+
+    def _git(self, *args):
+        import subprocess
+
+        return subprocess.run(
+            ["git", "-C", str(self.raiz), *args],
+            capture_output=True, text=True, timeout=60,
+        )
+
+    def test_un_archivo_sin_commit_no_esta_publicado(self):
+        archivo = self.raiz / "sello.json"
+        archivo.write_text("{}\n", encoding="utf-8")
+        self.assertIsNone(preregistro.publicacion_git(archivo))
+
+    def test_un_archivo_commiteado_tiene_fecha(self):
+        archivo = self.raiz / "sello.json"
+        archivo.write_text("{}\n", encoding="utf-8")
+        self._git("add", "sello.json")
+        commit = self._git(
+            "-c", "user.email=prueba@ejemplo.org",
+            "-c", "user.name=Prueba",
+            "commit", "-q", "-m", "sello",
+        )
+        self.assertEqual(commit.returncode, 0, commit.stderr)
+        fecha = preregistro.publicacion_git(archivo)
+        self.assertIsNotNone(fecha)
+        self.assertIn("T", fecha)
+
+    def test_ruta_inexistente(self):
+        self.assertIsNone(preregistro.publicacion_git(self.raiz / "no_existe.json"))
 
 
 if __name__ == "__main__":  # pragma: no cover

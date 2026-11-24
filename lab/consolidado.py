@@ -23,9 +23,7 @@ SIMBOLO = {
     "APROBADO": "ok",
     "FALLIDO": "X",
     "PENDIENTE": "·",
-    "NO_APLICABLE": "—",
-    "NO_PRESENTADA": "np",
-    "SENSIBLE_AL_DISENO": "sn",
+    "SENSIBLE": "sn",
 }
 
 
@@ -94,6 +92,7 @@ def generar_informe(
             f"**{v.get('estado', '—')}**",
             _fmt(i.get("mejora")),
             f"[{_fmt(i.get('ic_inferior'))}, {_fmt(i.get('ic_superior'))}]",
+            (c.get("comparacion") or {}).get("ratio_errores_texto") or "—",
             h.get("umbral_mejora"),
             _fmt((c.get("comparacion") or {}).get("error_reservado", {}).get("hipotesis"), 6),
             f"`{ds.get('id')}`",
@@ -102,7 +101,7 @@ def generar_informe(
     partes.append("## 1. Resumen por hipótesis")
     partes.append("")
     partes.append(_tabla(
-        ["hipótesis", "veredicto", "mejora", "IC 95 %", "umbral",
+        ["hipótesis", "veredicto", "mejora", "IC 95 %", "εhip/εbase", "umbral",
          "error reservado", "dataset", "corridas"],
         filas,
     ))
@@ -119,8 +118,7 @@ def generar_informe(
     partes.append(_tabla(["hipótesis"] + list(ORDEN), filas))
     partes.append("")
     partes.append(
-        "Leyenda: ok=aprobado, X=fallido, ·=pendiente, —=no aplicable, "
-        "np=no presentada, sn=sensible al diseño."
+        "Leyenda: ok=aprobado, X=fallido, ·=pendiente, sn=sensible al diseño."
     )
     partes.append("")
 

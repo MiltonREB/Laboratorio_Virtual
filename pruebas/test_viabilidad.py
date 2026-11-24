@@ -58,17 +58,27 @@ class TestReservado(unittest.TestCase):
 
 
 class TestUmbralEnElRuido(unittest.TestCase):
-    def test_avisa_si_el_umbral_exige_menos_que_el_ruido(self):
-        h = hipotesis_con(umbral_mejora=0.10, observable_objetivo="y")
+    """V03 usa el error del baseline como escala, no el ruido."""
+
+    def _con_ruido(self, ruido=1.0):
         dataset = _ctx()
-        objeto = dataset
-        object.__setattr__(objeto, "ruido", {"y": 1.0})
-        avisos = viabilidad.evaluar(h, objeto)
+        object.__setattr__(dataset, "ruido", {"y": ruido})
+        return dataset
+
+    def test_avisa_si_lo_exigido_cabe_en_el_ruido(self):
+        # umbral 0.01 sobre un baseline de error 0.01 exige 1e-4 < ruido 1.0
+        h = hipotesis_con(umbral_mejora=0.01)
+        avisos = viabilidad.evaluar(h, self._con_ruido(), error_baseline=0.01)
         self.assertIn("V03", _codigos(avisos))
 
-    def test_no_avisa_con_umbral_exigente(self):
-        h = hipotesis_con(umbral_mejora=0.90)
-        avisos = viabilidad.evaluar(h, _ctx())
+    def test_no_avisa_si_lo_exigido_supera_el_ruido(self):
+        h = hipotesis_con(umbral_mejora=0.10)
+        avisos = viabilidad.evaluar(h, self._con_ruido(0.01), error_baseline=1.0)
+        self.assertNotIn("V03", _codigos(avisos))
+
+    def test_sin_error_del_baseline_no_se_puede_decidir(self):
+        h = hipotesis_con(umbral_mejora=0.01)
+        avisos = viabilidad.evaluar(h, self._con_ruido())
         self.assertNotIn("V03", _codigos(avisos))
 
 

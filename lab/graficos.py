@@ -212,11 +212,15 @@ def t03(resumen, predicciones, ancho=ANCHO_POR_DEFECTO, alto=ALTO_POR_DEFECTO) -
     partes.append(_texto(12, 18, "ΔO = hipótesis − baseline (por fila)", TEXTO, 10))
     if _dentro(0.0, lo, hi):
         partes.append(_ref_horizontal(_esc(0, lo, hi, y0, y1), x0, x1, EJE))
-    banda = _dentro(exigido, lo, hi) or _dentro(-exigido, lo, hi)
-    if banda:
+    dibujadas = 0
+    if exigido > 0:
         for signo in (-1, 1):
-            y = _esc(signo * exigido, lo, hi, y0, y1)
+            valor = signo * exigido
+            if not _dentro(valor, lo, hi):
+                continue
+            y = _esc(valor, lo, hi, y0, y1)
             partes.append(_ref_horizontal(y, x0, x1, AMBAR, guion=True))
+            dibujadas += 1
     puntos = []
     n = len(deltas)
     for i, d in enumerate(deltas):
@@ -227,7 +231,7 @@ def t03(resumen, predicciones, ancho=ANCHO_POR_DEFECTO, alto=ALTO_POR_DEFECTO) -
         f'<polyline points="{" ".join(puntos)}" fill="none" stroke="{AZUL}" '
         'stroke-width="1.3"/>'
     )
-    nota = (f"exigido ±{_numero(exigido)}" if banda
+    nota = (f"exigido ±{_numero(exigido)}" if dibujadas == 2
             else f"exigido ±{_numero(exigido)} (fuera de escala)")
     if escala is not None:
         nota += f" · error baseline {_numero(escala)}"

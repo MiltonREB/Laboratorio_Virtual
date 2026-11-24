@@ -1,0 +1,743 @@
+{
+  "schema_version": "1.2",
+  "version_laboratorio": "1.1.0",
+  "version_protocolo": "1.1.0",
+  "hipotesis": {
+    "id": "pendulo_amplitud",
+    "nombre": "Corrección de amplitud finita del péndulo",
+    "version": "1.0.0",
+    "enunciado": "A amplitud finita, el período del péndulo simple es mayor que 2π√(L/g) y crece con θ0² y θ0⁴.",
+    "prediccion_diferenciadora": "Para θ0 = 1.2 rad el modelo predice un período ≈ 9 % mayor que el baseline de pequeña amplitud; la separación crece cuadráticamente con θ0. El baseline predice separación nula, así que un barrido en amplitud distingue las dos propuestas sin ambigüedad.",
+    "observable_objetivo": "T_s",
+    "unidad_observable": "s",
+    "metrica": "rmse",
+    "umbral_mejora": 0.1,
+    "umbral_sensibilidad": 0.0001,
+    "incertidumbre_declarada": 0.001,
+    "semilla": 20261124,
+    "dominio": {
+      "descripcion": "Péndulo simple ideal, amplitudes moderadas, una sola masa",
+      "rango": {
+        "L_m": [
+          0.4,
+          2.5
+        ],
+        "theta0_rad": [
+          0.0,
+          1.4
+        ]
+      },
+      "limitaciones": [
+        "Sin rozamiento, sin masa de hilo, sin elasticidad.",
+        "Más allá de θ0 ≈ 1.4 rad la serie de cuarto orden deja de ser suficiente."
+      ]
+    },
+    "parametros": [
+      {
+        "nombre": "g",
+        "valor": 9.80665,
+        "unidad": "m/s^2",
+        "congelado": true,
+        "descripcion": "Gravedad; fijada, no ajustada"
+      },
+      {
+        "nombre": "c2",
+        "valor": 0.0,
+        "unidad": "rad^-2",
+        "congelado": false,
+        "descripcion": "Coeficiente de θ0², ajustado con calibración"
+      },
+      {
+        "nombre": "c4",
+        "valor": 0.0,
+        "unidad": "rad^-4",
+        "congelado": false,
+        "descripcion": "Coeficiente de θ0⁴, ajustado con calibración"
+      }
+    ],
+    "parametros_declarados": {
+      "g": 9.80665,
+      "c2": 0.0,
+      "c4": 0.0
+    },
+    "parametros_ajustados": {
+      "g": 9.80665,
+      "c2": 0.062470517960714976,
+      "c4": 0.003595309299855132
+    },
+    "ajuste_usado": true,
+    "baseline": {
+      "id": "pendulo_lineal",
+      "nombre": "Péndulo simple de pequeña amplitud",
+      "version": "1.0.0",
+      "supuestos": "Amplitud despreciable (θ0 → 0), masa puntual, sin rozamiento, g fija. No depende de θ0.",
+      "parametros": [
+        {
+          "nombre": "g",
+          "valor": 9.80665,
+          "unidad": "m/s^2",
+          "congelado": true,
+          "descripcion": "Gravedad estándar; no se ajusta"
+        }
+      ]
+    }
+  },
+  "dataset": {
+    "id": "pendulo_v1",
+    "ruta": "C:\\atomo\\laboratorio\\datos\\pendulo_v1.csv",
+    "filas": 240,
+    "variables": [
+      "L_m",
+      "theta0_rad"
+    ],
+    "observables": [
+      "T_s"
+    ],
+    "unidades": {
+      "L_m": "m",
+      "theta0_rad": "rad",
+      "T_s": "s"
+    },
+    "calibracion": 144,
+    "reservado": 96,
+    "ruido": {
+      "T_s": 0.0008
+    },
+    "origen": "sintetico",
+    "generado_por": "datos/generar_datos.py",
+    "uso": "ajuste",
+    "sha256": "cef7a81feda152e638de81dc176966e8eee0b5d34bb3cf24504f9d11b7864b1b",
+    "integridad": true,
+    "descripcion": "Péndulo simple sintético (240 filas). Control de la maquinaria del laboratorio: la verdad generadora es T = 2π√(L/g)(1+θ²/16+11θ⁴/3072) + ruido gaussiano σ=8e-4 s. No es una medición física.",
+    "notas": "Amplitudes hasta 1.2 rad: la corrección de amplitud es grande frente al ruido."
+  },
+  "comparacion": {
+    "intervalo": {
+      "mejora": 0.9908343299095523,
+      "ic_inferior": 0.9887145249458199,
+      "ic_superior": 0.9924979482161583,
+      "nivel": 0.95,
+      "remuestreos": 2000,
+      "exitos": 2000,
+      "excluye_cero": true
+    },
+    "histograma_bootstrap": {
+      "bordes": [
+        0.9867841331381974,
+        0.9869664942885085,
+        0.9871488554388197,
+        0.9873312165891308,
+        0.9875135777394419,
+        0.9876959388897532,
+        0.9878783000400643,
+        0.9880606611903754,
+        0.9882430223406865,
+        0.9884253834909977,
+        0.9886077446413088,
+        0.98879010579162,
+        0.9889724669419312,
+        0.9891548280922423,
+        0.9893371892425534,
+        0.9895195503928647,
+        0.9897019115431758,
+        0.9898842726934869,
+        0.990066633843798,
+        0.9902489949941092,
+        0.9904313561444203,
+        0.9906137172947315,
+        0.9907960784450427,
+        0.9909784395953538,
+        0.9911608007456649,
+        0.9913431618959762,
+        0.9915255230462873,
+        0.9917078841965984,
+        0.9918902453469096,
+        0.9920726064972207,
+        0.9922549676475318,
+        0.992437328797843,
+        0.9926196899481542,
+        0.9928020510984653,
+        0.9929844122487764,
+        0.9931667733990877,
+        0.9933491345493988
+      ],
+      "cuentas": [
+        1,
+        0,
+        1,
+        2,
+        2,
+        0,
+        3,
+        3,
+        0,
+        7,
+        15,
+        14,
+        17,
+        15,
+        27,
+        27,
+        34,
+        38,
+        45,
+        58,
+        78,
+        63,
+        68,
+        81,
+        93,
+        80,
+        61,
+        52,
+        43,
+        31,
+        18,
+        13,
+        6,
+        1,
+        1,
+        2
+      ]
+    },
+    "decision": {
+      "estado": "APROBADO",
+      "motivo": "mejora 0.9908 ≥ umbral 0.1000 e IC [0.9887, 0.9925] excluye el cero"
+    },
+    "error_calibracion": {
+      "hipotesis": 0.0008082715521860538,
+      "baseline": 0.10747779461103692
+    },
+    "error_reservado": {
+      "hipotesis": 0.0008172198487642368,
+      "baseline": 0.08916094957595416
+    },
+    "ratio_errores": 0.00916567009044768,
+    "ratio_errores_texto": "1/109",
+    "delta_max_abs": 0.2433583004830675
+  },
+  "estabilidad": {
+    "ensayos": [
+      {
+        "particion": 0,
+        "semilla": 20262124,
+        "filas_calibracion": 144,
+        "filas_reservado": 96,
+        "error_hipotesis": 0.0007790703970675466,
+        "error_baseline": 0.1070106119052432,
+        "mejora": 0.9927196902886846,
+        "alcanza_umbral": true
+      },
+      {
+        "particion": 1,
+        "semilla": 20263124,
+        "filas_calibracion": 144,
+        "filas_reservado": 96,
+        "error_hipotesis": 0.0008233126519966342,
+        "error_baseline": 0.10226764413759142,
+        "mejora": 0.991949431719685,
+        "alcanza_umbral": true
+      },
+      {
+        "particion": 2,
+        "semilla": 20264124,
+        "filas_calibracion": 144,
+        "filas_reservado": 96,
+        "error_hipotesis": 0.0008016514860884174,
+        "error_baseline": 0.09628496903450369,
+        "mejora": 0.9916741782842434,
+        "alcanza_umbral": true
+      },
+      {
+        "particion": 3,
+        "semilla": 20265124,
+        "filas_calibracion": 144,
+        "filas_reservado": 96,
+        "error_hipotesis": 0.0008216564562055536,
+        "error_baseline": 0.09540761251484534,
+        "mejora": 0.9913879360928595,
+        "alcanza_umbral": true
+      },
+      {
+        "particion": 4,
+        "semilla": 20266124,
+        "filas_calibracion": 144,
+        "filas_reservado": 96,
+        "error_hipotesis": 0.0008672264938259489,
+        "error_baseline": 0.0951521481492514,
+        "mejora": 0.9908858968431732,
+        "alcanza_umbral": true
+      }
+    ],
+    "mejora_minima": 0.9908858968431732,
+    "mejora_maxima": 0.9927196902886846,
+    "mejora_media": 0.9917234266457292,
+    "desviacion": 0.0006819191708098245,
+    "fraccion_alcanza_umbral": 1.0,
+    "umbral_mejora": 0.1
+  },
+  "control_nulo": {
+    "sigma_usado": 0.001,
+    "mejora": -0.004765686774343747,
+    "ic_inferior": -0.03573460193256422,
+    "ic_superior": 0.02666242576693432,
+    "error_baseline": 0.0009302705421511655,
+    "error_hipotesis": 0.0009347039201704569,
+    "filas_calibracion": 144,
+    "filas_reservado": 96,
+    "exitos_bootstrap": 2000
+  },
+  "reproducibilidad": {
+    "prediccion_identica": true,
+    "bootstrap_identico": true,
+    "sha_prediccion_1": "9b6543d09bb6e8073cec367aa93a621c60d6e2a182c4c27ca73141d5bab59e97",
+    "sha_prediccion_2": "9b6543d09bb6e8073cec367aa93a621c60d6e2a182c4c27ca73141d5bab59e97",
+    "sha_bootstrap_1": "83472a3d547a81063ebae0b300712d9d74234c7f4b702eaa8fe1149441eebfdc",
+    "sha_bootstrap_2": "83472a3d547a81063ebae0b300712d9d74234c7f4b702eaa8fe1149441eebfdc",
+    "punto_de_igualdad": true,
+    "cambios_firma": []
+  },
+  "preregistro": {
+    "estado_preregistro": "VALIDO",
+    "aceptable": true,
+    "firma_en_sello": "0d700ebfe0394344261133fafb1d7ce00435e293eb60df2794f775e65d3fefa2",
+    "firma_actual": "0d700ebfe0394344261133fafb1d7ce00435e293eb60df2794f775e65d3fefa2",
+    "ruta": "C:\\atomo\\laboratorio\\resultados\\preregistro\\pendulo_amplitud\\20261124T192732031946Z.json",
+    "creado_utc": "2026-11-24T19:27:32.031946+00:00",
+    "antiguedad_segundos": 146.640558,
+    "separacion_minima": 60.0,
+    "publicado_utc": "2026-11-24T16:27:38-03:00",
+    "publicado": true
+  },
+  "pruebas": [
+    {
+      "codigo": "T01",
+      "titulo": "Formalización del contrato",
+      "estado": "APROBADO",
+      "detalle": "Enunciado, dominio, unidades, baseline, métrica y umbrales declarados",
+      "evidencia": {
+        "enunciado": "A amplitud finita, el período del péndulo simple es mayor que 2π√(L/g) y crece con θ0² y θ0⁴.",
+        "dominio": "Péndulo simple ideal, amplitudes moderadas, una sola masa",
+        "baseline": "pendulo_lineal",
+        "metrica": "rmse",
+        "umbral_mejora": 0.1,
+        "umbral_sensibilidad": 0.0001
+      },
+      "es_ausencia": false
+    },
+    {
+      "codigo": "T02",
+      "titulo": "Falsabilidad de la predicción",
+      "estado": "APROBADO",
+      "detalle": "Predicción numérica finita y variable en 96 filas; el umbral de mejora 0.1 haría fallar la hipótesis si no se alcanza",
+      "evidencia": {
+        "filas_reservadas": 96,
+        "min": 1.5308868589747162,
+        "max": 3.053348078395745,
+        "umbral_mejora": 0.1
+      },
+      "es_ausencia": false
+    },
+    {
+      "codigo": "T03",
+      "titulo": "Predicción diferenciadora frente al baseline",
+      "estado": "APROBADO",
+      "detalle": "|ΔO| máximo 0.2434 s = 2.7× el error del baseline (0.08916)",
+      "evidencia": {
+        "delta_max_abs": 0.2433583004830675,
+        "delta_rms": 0.0890643377268088,
+        "escala_baseline": 0.08916094957595416,
+        "factor_diferenciacion": 1.0,
+        "umbral_sensibilidad_absoluto": 0.0001,
+        "exigido": 0.08916094957595416,
+        "veces_la_escala": 2.7294269704446807,
+        "unidad": "s",
+        "texto": "Para θ0 = 1.2 rad el modelo predice un período ≈ 9 % mayor que el baseline de pequeña amplitud; la separación crece cuadráticamente con θ0. El baseline predice separación nula, así que un barrido en amplitud distingue las dos propuestas sin ambigüedad."
+      },
+      "es_ausencia": false
+    },
+    {
+      "codigo": "T04",
+      "titulo": "Preregistro de parámetros y umbrales",
+      "estado": "APROBADO",
+      "detalle": "Sello verificado (0d700ebfe039…), sellado 2.4 min antes, publicado en git el 2026-11-24T16:27:38-03:00",
+      "evidencia": {
+        "estado_preregistro": "VALIDO",
+        "aceptable": true,
+        "firma_en_sello": "0d700ebfe0394344261133fafb1d7ce00435e293eb60df2794f775e65d3fefa2",
+        "firma_actual": "0d700ebfe0394344261133fafb1d7ce00435e293eb60df2794f775e65d3fefa2",
+        "ruta": "C:\\atomo\\laboratorio\\resultados\\preregistro\\pendulo_amplitud\\20261124T192732031946Z.json",
+        "creado_utc": "2026-11-24T19:27:32.031946+00:00",
+        "antiguedad_segundos": 146.640558,
+        "separacion_minima": 60.0,
+        "publicado_utc": "2026-11-24T16:27:38-03:00",
+        "publicado": true
+      },
+      "es_ausencia": false
+    },
+    {
+      "codigo": "T05",
+      "titulo": "Calibración restringida a la muestra de calibración",
+      "estado": "APROBADO",
+      "detalle": "2 parámetro(s) ajustado(s) sólo con 144 filas de calibración; 96 filas reservadas intactas",
+      "evidencia": {
+        "parametros_libres": [
+          "c2",
+          "c4"
+        ],
+        "valores_declarados": {
+          "g": 9.80665,
+          "c2": 0.0,
+          "c4": 0.0
+        },
+        "valores_ajustados": {
+          "g": 9.80665,
+          "c2": 0.062470517960714976,
+          "c4": 0.003595309299855132
+        },
+        "filas_calibracion": 144,
+        "filas_reservado": 96,
+        "solape_particiones": 0,
+        "ajuste_usado": true,
+        "vacuo": false
+      },
+      "es_ausencia": false
+    },
+    {
+      "codigo": "T06",
+      "titulo": "Validación fuera de muestra",
+      "estado": "APROBADO",
+      "detalle": "Error fuera de muestra 0.00081722 dentro de 5× la escala 0.001",
+      "evidencia": {
+        "error_reservado": 0.0008172198487642368,
+        "error_calibracion": 0.0008082715521860538,
+        "escala": 0.001,
+        "factor_admitido": 5.0,
+        "filas_reservado": 96
+      },
+      "es_ausencia": false
+    },
+    {
+      "codigo": "T07",
+      "titulo": "Comparación con el baseline convencional",
+      "estado": "APROBADO",
+      "detalle": "mejora 0.9908 ≥ umbral 0.1000 e IC [0.9887, 0.9925] excluye el cero",
+      "evidencia": {
+        "mejora": 0.9908343299095523,
+        "ic_inferior": 0.9887145249458199,
+        "ic_superior": 0.9924979482161583,
+        "nivel": 0.95,
+        "remuestreos": 2000,
+        "exitos": 2000,
+        "excluye_cero": true,
+        "error_hipotesis": 0.0008172198487642368,
+        "error_baseline": 0.08916094957595416,
+        "ratio_errores": 0.00916567009044768,
+        "metrica": "rmse",
+        "umbral_mejora": 0.1,
+        "peor_que_baseline": false
+      },
+      "es_ausencia": false
+    },
+    {
+      "codigo": "T08",
+      "titulo": "Estabilidad de la conclusión ante el diseño",
+      "estado": "APROBADO",
+      "detalle": "La mejora conserva el signo en 5 particiones alternativas (mínima 0.9909)",
+      "evidencia": {
+        "ensayos": [
+          {
+            "particion": 0,
+            "semilla": 20262124,
+            "filas_calibracion": 144,
+            "filas_reservado": 96,
+            "error_hipotesis": 0.0007790703970675466,
+            "error_baseline": 0.1070106119052432,
+            "mejora": 0.9927196902886846,
+            "alcanza_umbral": true
+          },
+          {
+            "particion": 1,
+            "semilla": 20263124,
+            "filas_calibracion": 144,
+            "filas_reservado": 96,
+            "error_hipotesis": 0.0008233126519966342,
+            "error_baseline": 0.10226764413759142,
+            "mejora": 0.991949431719685,
+            "alcanza_umbral": true
+          },
+          {
+            "particion": 2,
+            "semilla": 20264124,
+            "filas_calibracion": 144,
+            "filas_reservado": 96,
+            "error_hipotesis": 0.0008016514860884174,
+            "error_baseline": 0.09628496903450369,
+            "mejora": 0.9916741782842434,
+            "alcanza_umbral": true
+          },
+          {
+            "particion": 3,
+            "semilla": 20265124,
+            "filas_calibracion": 144,
+            "filas_reservado": 96,
+            "error_hipotesis": 0.0008216564562055536,
+            "error_baseline": 0.09540761251484534,
+            "mejora": 0.9913879360928595,
+            "alcanza_umbral": true
+          },
+          {
+            "particion": 4,
+            "semilla": 20266124,
+            "filas_calibracion": 144,
+            "filas_reservado": 96,
+            "error_hipotesis": 0.0008672264938259489,
+            "error_baseline": 0.0951521481492514,
+            "mejora": 0.9908858968431732,
+            "alcanza_umbral": true
+          }
+        ],
+        "mejora_minima": 0.9908858968431732,
+        "mejora_maxima": 0.9927196902886846,
+        "mejora_media": 0.9917234266457292,
+        "desviacion": 0.0006819191708098245,
+        "fraccion_alcanza_umbral": 1.0,
+        "umbral_mejora": 0.1,
+        "positivas": 5,
+        "negativas": 0
+      },
+      "es_ausencia": false
+    },
+    {
+      "codigo": "T09",
+      "titulo": "Reproducibilidad numérica",
+      "estado": "APROBADO",
+      "detalle": "Dos ejecuciones producen la misma predicción y el mismo bootstrap (9b6543d09bb6…)",
+      "evidencia": {
+        "sha_prediccion_1": "9b6543d09bb6e8073cec367aa93a621c60d6e2a182c4c27ca73141d5bab59e97",
+        "sha_prediccion_2": "9b6543d09bb6e8073cec367aa93a621c60d6e2a182c4c27ca73141d5bab59e97",
+        "sha_bootstrap_1": "83472a3d547a81063ebae0b300712d9d74234c7f4b702eaa8fe1149441eebfdc",
+        "sha_bootstrap_2": "83472a3d547a81063ebae0b300712d9d74234c7f4b702eaa8fe1149441eebfdc",
+        "prediccion_identica": true,
+        "bootstrap_identico": true
+      },
+      "es_ausencia": false
+    },
+    {
+      "codigo": "T10",
+      "titulo": "Presupuesto de incertidumbre",
+      "estado": "APROBADO",
+      "detalle": "El error observado es 0.82× la incertidumbre declarada",
+      "evidencia": {
+        "incertidumbre_declarada": 0.001,
+        "error_observado": 0.0008172198487642368,
+        "residuo_rms": 0.0008172198487642368,
+        "razon_error_sobre_declarada": 0.8172198487642368
+      },
+      "es_ausencia": false
+    },
+    {
+      "codigo": "T11",
+      "titulo": "Control nulo por datos generados con el baseline",
+      "estado": "APROBADO",
+      "detalle": "Sobre datos del baseline la mejora es -0.0048 (umbral exigido 0.1000): no se gana por artefacto",
+      "evidencia": {
+        "sigma_usado": 0.001,
+        "mejora": -0.004765686774343747,
+        "ic_inferior": -0.03573460193256422,
+        "ic_superior": 0.02666242576693432,
+        "error_baseline": 0.0009302705421511655,
+        "error_hipotesis": 0.0009347039201704569,
+        "filas_calibracion": 144,
+        "filas_reservado": 96,
+        "exitos_bootstrap": 2000,
+        "umbral_mejora": 0.1,
+        "descripcion": "Datos sintéticos generados por el baseline con el mismo ruido; una hipótesis honesta no debe alcanzar su umbral de mejora aquí"
+      },
+      "es_ausencia": false
+    },
+    {
+      "codigo": "T12",
+      "titulo": "Dominio de validez declarado",
+      "estado": "APROBADO",
+      "detalle": "144 filas de calibración y 96 reservadas dentro del dominio declarado",
+      "evidencia": {
+        "rango_declarado": {
+          "L_m": [
+            0.4,
+            2.5
+          ],
+          "theta0_rad": [
+            0.0,
+            1.4
+          ]
+        },
+        "fraccion_fuera": {
+          "L_m": 0.0,
+          "theta0_rad": 0.0
+        },
+        "observado": {
+          "L_m": {
+            "min": 0.5046756106310424,
+            "max": 1.9838067155635253,
+            "filas": 240
+          },
+          "theta0_rad": {
+            "min": 0.026346082000271213,
+            "max": 1.1959955575807935,
+            "filas": 240
+          }
+        },
+        "limitaciones": [
+          "Sin rozamiento, sin masa de hilo, sin elasticidad.",
+          "Más allá de θ0 ≈ 1.4 rad la serie de cuarto orden deja de ser suficiente."
+        ]
+      },
+      "es_ausencia": false
+    }
+  ],
+  "verificaciones": [
+    {
+      "codigo": "O01",
+      "titulo": "Contraste con un baseline alternativo",
+      "estado": "EJECUTADA",
+      "ejecutada": true,
+      "vinculante": true,
+      "motivo": "La hipótesis declara al menos un baseline alternativo.",
+      "detalle": "Mejora frente a cada baseline alternativo: pendulo_segundo_orden +0.847, pendulo_serie_cuarto_orden -0.000. No supera a pendulo_serie_cuarto_orden: frente a ese modelo la hipótesis no aporta nada, y la ventaja observada puede venir del ajuste o de lo incompleto del baseline principal.",
+      "evidencia": {
+        "resultados": [
+          {
+            "baseline": "pendulo_segundo_orden",
+            "error": 0.00534824973145395,
+            "mejora": 0.8471986369750032
+          },
+          {
+            "baseline": "pendulo_serie_cuarto_orden",
+            "error": 0.0008168910573169377,
+            "mejora": -0.00040249118209101375
+          }
+        ],
+        "gana_a_todos": false
+      }
+    },
+    {
+      "codigo": "O02",
+      "titulo": "Validación por bloques del dominio",
+      "estado": "EJECUTADA",
+      "ejecutada": true,
+      "vinculante": false,
+      "motivo": "Hay 96 filas reservadas, suficientes para 3 bloques de 10.",
+      "detalle": "La mejora se mantiene en los 3 bloques de 'L_m'.",
+      "evidencia": {
+        "variable": "L_m",
+        "bloques": [
+          {
+            "bloque": 1,
+            "filas": 32,
+            "desde": 0.5376182703785362,
+            "hasta": 1.0499244768363296,
+            "error_hipotesis": 0.0008315205540948438,
+            "error_baseline": 0.07083344292296107,
+            "mejora": 0.9882609044572461
+          },
+          {
+            "bloque": 2,
+            "filas": 32,
+            "desde": 1.057269513229846,
+            "hasta": 1.5043676527225776,
+            "error_hipotesis": 0.0007281755082215783,
+            "error_baseline": 0.10262486068042491,
+            "mejora": 0.9929044921143511
+          },
+          {
+            "bloque": 3,
+            "filas": 32,
+            "desde": 1.5089629492608463,
+            "hasta": 1.9838067155635253,
+            "error_hipotesis": 0.0008842391311103442,
+            "error_baseline": 0.09110316197509566,
+            "mejora": 0.9902940895580324
+          }
+        ],
+        "hallazgo": "CONSISTENTE"
+      }
+    },
+    {
+      "codigo": "O03",
+      "titulo": "Sensibilidad al número de remuestreos",
+      "estado": "NO_REQUERIDA",
+      "ejecutada": false,
+      "vinculante": false,
+      "motivo": "No se pidió con --sensibilidad-bootstrap: recalcular el intervalo con otros tamaños duplica el coste sin cambiar la decisión.",
+      "detalle": "",
+      "evidencia": {}
+    },
+    {
+      "codigo": "O04",
+      "titulo": "Holdout externo",
+      "estado": "EJECUTADA",
+      "ejecutada": true,
+      "vinculante": true,
+      "motivo": "Dataset de validación independiente: 'pendulo_holdout_v1'.",
+      "detalle": "En el holdout externo (80 filas) la mejora es +0.9806 (error 0.00131574 frente a 0.067948).",
+      "evidencia": {
+        "dataset_validacion": "pendulo_holdout_v1",
+        "filas": 80,
+        "error_hipotesis": 0.0013157379744145026,
+        "error_baseline": 0.06794802544044007,
+        "mejora": 0.9806361117061774,
+        "supera_baseline": true
+      }
+    },
+    {
+      "codigo": "O05",
+      "titulo": "Corrección por comparaciones múltiples",
+      "estado": "NO_REQUERIDA",
+      "ejecutada": false,
+      "vinculante": false,
+      "motivo": "Sólo una hipótesis usa este dataset: no hay familia de comparaciones que corregir.",
+      "detalle": "",
+      "evidencia": {}
+    }
+  ],
+  "viabilidad": [],
+  "veredicto": {
+    "estado": "PRELIMINAR",
+    "motivo": "La hipótesis no supera a todos los baselines alternativos (O01): su ventaja depende del baseline elegido. El máximo alcanzable es preliminar.",
+    "descripcion": "Las doce pruebas se cumplieron, pero falta el contraste que exige el protocolo para corroborar: un baseline alternativo al que superar o un holdout externo. El resultado es indicativo, no corroborado.",
+    "bloqueantes_incumplidas": [],
+    "conteo_estados": {
+      "APROBADO": 12
+    },
+    "matriz": {
+      "T01": "APROBADO",
+      "T02": "APROBADO",
+      "T03": "APROBADO",
+      "T04": "APROBADO",
+      "T05": "APROBADO",
+      "T06": "APROBADO",
+      "T07": "APROBADO",
+      "T08": "APROBADO",
+      "T09": "APROBADO",
+      "T10": "APROBADO",
+      "T11": "APROBADO",
+      "T12": "APROBADO"
+    }
+  },
+  "advertencias": [],
+  "configuracion": {
+    "remuestreos_bootstrap": 2000,
+    "particiones_alternativas": 5
+  },
+  "entorno": {
+    "python": "3.14.0",
+    "plataforma": "Windows-11-10.0.26300-SP0",
+    "numpy": "2.5.4",
+    "archivo_hipotesis": "C:\\atomo\\laboratorio\\hipotesis\\pendulo_amplitud.py",
+    "sha256_hipotesis": "8d6ea4f64e08ae9477ae804fa054fd83779b208644addd7d96af7d46f297735f",
+    "clase": "PenduloAmplitudFinita",
+    "utc": "2026-11-24T19:29:59.317761+00:00"
+  },
+  "corrida": "C:\\atomo\\laboratorio\\resultados\\pendulo_amplitud_20261124T192959Z"
+}

@@ -229,6 +229,13 @@ def evaluar_hipotesis(
         advertencias=advertencias,
     )
 
+    # -- viabilidad y batería ------------------------------------------
+    # Los avisos se calculan antes de ejecutar las pruebas: no cambian el
+    # veredicto, pero deben estar disponibles antes de leer los resultados.
+    avisos_viabilidad = viabilidad.evaluar(
+        hipotesis, dataset, verif, error_baseline=errores_res.get("baseline")
+    )
+
     pruebas = ejecutar_pruebas(ctx)
     verificaciones = catalogo.ejecutar(
         ctx,
@@ -239,7 +246,6 @@ def evaluar_hipotesis(
         ),
     )
     veredicto = agregar(pruebas, verificaciones)
-    avisos_viabilidad = viabilidad.evaluar(hipotesis, dataset, verif)
 
     corrida = _carpeta_corrida(raiz, hipotesis.id) if guardar else Path()
     datos = _resumen(

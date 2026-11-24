@@ -177,6 +177,24 @@ class TestEscalas(unittest.TestCase):
         svg = graficos.grafico_prueba("T07", resumen, predicciones)
         self.assertIn("fuera de escala", svg)
 
+    def test_banda_asimetrica_no_se_sale_del_lienzo(self):
+        """Caso real: ΔO siempre positivo y solo un lado de la banda cabe."""
+        resumen = {
+            "hipotesis": {"umbral_mejora": 0.1, "factor_diferenciacion": 1.0,
+                          "umbral_sensibilidad": None, "unidad_observable": "s"},
+            "pruebas": [{"codigo": "T03", "evidencia": {
+                "exigido": 0.089, "escala_baseline": 0.089,
+                "factor_diferenciacion": 1.0}}],
+        }
+        predicciones = [
+            {"particion": "reservado", "observado": 1.0,
+             "hipotesis": 2.0 + 0.01 * i, "baseline": 1.98 + 0.01 * i}
+            for i in range(20)
+        ]
+        svg = graficos.grafico_prueba("T03", resumen, predicciones)
+        self.assertEqual(_coordenadas_fuera(svg), [])
+        self.assertIn("fuera de escala", svg)
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

@@ -43,12 +43,18 @@ def evaluar(
     hipotesis: Hipotesis,
     dataset: ConjuntoDatos,
     verificacion: Any | None = None,
+    error_baseline: float | None = None,
 ) -> list[Aviso]:
-    """Lista de avisos aplicables; vacía si no hay nada que objetar."""
+    """Lista de avisos aplicables; vacía si no hay nada que objetar.
+
+    ``error_baseline`` es el error del baseline sobre el reservado. Se calcula
+    antes de la batería, así que V03 puede usarlo como escala real del problema
+    en lugar de aproximarla con el ruido.
+    """
     avisos: list[Aviso] = []
     avisos.extend(_identificabilidad(hipotesis, dataset))
     avisos.extend(_reservado(hipotesis, dataset))
-    avisos.extend(_umbral_en_el_ruido(hipotesis, dataset))
+    avisos.extend(_umbral_en_el_ruido(hipotesis, dataset, error_baseline))
     avisos.extend(_dominio(hipotesis, dataset))
     avisos.extend(_incertidumbre(hipotesis))
     avisos.extend(_preregistro(verificacion))
@@ -91,22 +97,30 @@ def _reservado(h: Hipotesis, dataset: ConjuntoDatos) -> list[Aviso]:
     )]
 
 
-def _umbral_en_el_ruido(h: Hipotesis, dataset: ConjuntoDatos) -> list[Aviso]:
-    """Si lo exigido es menor que el ruido, la prueba no discrimina nada."""
+def _umbral_en_el_ruido(
+    h: Hipotesis, dataset: ConjuntoDatos, error_baseline: float | None
+) -> list[Aviso]:
+    """Si la mejora exigida cabe dentro del ruido, el criterio no discrimina.
+
+    La mejora relativa ``u`` sobre un baseline con error ``ε`` exige reducir el
+    error en ``u·ε`` en términos absolutos. Si eso es menor que el ruido σ, un
+    modelo puede cumplir el umbral sin aportar información.
+    """
     umbral = h.umbral_mejora
-    if umbral is None or not dataset.observables:
+    if umbral is None or error_baseline is None:
         return []
     sigma = dataset.ruido.get(h.observable_objetivo)
     if sigma is None:
         return []
-    # El error del baseline se desconoce antes de predecir; se usa el ruido como
-    # cota inferior razonable de la escala del problema.
-    exigido_absoluto = float(umbral) * float(sigma)
-    if exigido_absoluto >= float(sigma) * 0.5:
+    epsilon = float(error_baseline)
+    if not np.isfinite(epsilon) or epsilon <= 0:
+        return []
+    exigido_absoluto = float(umbral) * epsilon
+    if exigido_absoluto >= float(sigma):
         return []
     return [Aviso(
         "V03", "media",
-        f"El umbral de mejora ({umbral:g}) exige {exigido_absoluto:.3g}, "
+        f"El umbral de mejora ({umbral:g}) exige reducir {exigido_absoluto:.3g}, "
         f"menos que el ruido declarado ({float(sigma):.3g})",
         "Una mejora de esa magnitud cabe dentro del ruido: el criterio no "
         "distingue un modelo informativo de uno que no lo es.",

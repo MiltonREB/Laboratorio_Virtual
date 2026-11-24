@@ -1,7 +1,8 @@
 # Laboratorio virtual de hipótesis
 
 [![estado](https://img.shields.io/badge/protocolo-v1.1.0-blue)](CHANGELOG_METODOLOGICO.md)
-[![repositorio](https://img.shields.io/badge/github-Laboratorio__Virtual-181717)](https://github.com/MiltonREB/Laboratorio_Virtual)
+[![repositorio](https://img.shields.io/badge/github-lab--hipotesis-181717)](https://github.com/MiltonREB/lab-hipotesis)
+[![licencia](https://img.shields.io/badge/licencia-Apache--2.0-blue)](LICENSE)
 
 Un marco para **contrastar hipótesis cuantitativas** de cualquier dominio con un
 protocolo fijo: preregistro de parámetros y umbrales, calibración separada,
@@ -423,7 +424,19 @@ contrastable.
   Si el diseño no lo es, el intervalo tampoco.
 - **El control nulo usa el baseline como verdad.** Detecta ventajas espurias por
   flexibilidad, no todos los sesgos de selección.
-- **El preregistro prueba integridad, no anterioridad.** Registra si el sello se
-  creó durante la evaluación y en ese caso no lo acepta.
+- **El preregistro acredita integridad y separación, no buena fe.** El sello
+  detecta cambios posteriores y exige antigüedad mínima y publicación en un
+  commit, pero no puede probar que nadie mirase los datos antes de sellar.
 - **Un veredicto negativo no refuta la idea**, sólo que este diseño no la
   sostiene.
+
+## Licencia
+
+Código bajo **Apache 2.0**. Las contribuciones se aceptan bajo la misma
+licencia: ver [CONTRIBUTING.md](CONTRIBUTING.md). El texto completo está en
+[LICENSE](LICENSE) y el titular del copyright en [NOTICE](NOTICE).
+
+Los datos y resultados del repositorio se distribuyen con la misma licencia
+salvo que un archivo declare otra cosa. Los valores de referencia externos que
+se incorporen en el futuro (CODATA, IUPAC, modelos geodésicos) conservarán su
+propia licencia y cita.

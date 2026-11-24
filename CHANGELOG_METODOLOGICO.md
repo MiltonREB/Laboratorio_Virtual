@@ -164,12 +164,18 @@ El preregistro deja de ser un commit local con fecha ajustable:
 
 | Dato | Valor |
 |---|---|
-| Repositorio | https://github.com/MiltonREB/Laboratorio_Virtual |
+| Repositorio | https://github.com/MiltonREB/lab-hipotesis |
 | Commit que publica los sellos | `14bf993e5b0c4520d5e20ea3a7716c28bde82d04` |
-| Sello de `pendulo_amplitud` | [ver en ese commit](https://github.com/MiltonREB/Laboratorio_Virtual/blob/14bf993e5b0c4520d5e20ea3a7716c28bde82d04/resultados/preregistro/pendulo_amplitud/20261124T192732031946Z.json) |
-| Sello de `pendulo_polinomio_alto` | [ver en ese commit](https://github.com/MiltonREB/Laboratorio_Virtual/blob/14bf993e5b0c4520d5e20ea3a7716c28bde82d04/resultados/preregistro/pendulo_polinomio_alto/20261124T192732879391Z.json) |
+| Sello de `pendulo_amplitud` | [ver en ese commit](https://github.com/MiltonREB/lab-hipotesis/blob/14bf993e5b0c4520d5e20ea3a7716c28bde82d04/resultados/preregistro/pendulo_amplitud/20261124T192732031946Z.json) |
+| Sello de `pendulo_polinomio_alto` | [ver en ese commit](https://github.com/MiltonREB/lab-hipotesis/blob/14bf993e5b0c4520d5e20ea3a7716c28bde82d04/resultados/preregistro/pendulo_polinomio_alto/20261124T192732879391Z.json) |
 | `main` publicado al registrar esto | `5dba31a9442402ea161afa5e5433a19a362bc10b` |
 | Comprobación | `git merge-base --is-ancestor 14bf993 HEAD` → sí |
+
+**Nota sobre el localizador.** Estas son las URL canónicas tras el renombrado del
+repositorio (2026-11-24). GitHub redirige las URL anteriores con HTTP 301. El
+commit `14bf993` y los sellos SHA-256 **no cambian**: el renombrado afecta sólo
+al localizador, no al contenido. Una URL nueva y una vieja devuelven el mismo
+archivo, con el mismo hash.
 
 El commit del preregistro es **anterior** a cualquier dato de la Fase 1: cuando
 se publicó, esa fase no había empezado.
@@ -179,7 +185,7 @@ se publicó, esa fase no había empezado.
 
 | Comprobación | Resultado |
 |---|---|
-| `api.github.com/repos/MiltonREB/Laboratorio_Virtual` | HTTP 200 · `"private": false` |
+| `api.github.com/repos/MiltonREB/lab-hipotesis` | HTTP 200 · `"private": false` |
 | Sello de `pendulo_amplitud` en `14bf993` | HTTP 200 (raw, anónimo) |
 | `firma_sha256` publicada | `0d700ebfe0394344261133fafb1d7ce00435e293eb60df2794f775e65d3fefa2` |
 | Hash que verificó T04 en la corrida | `0d700ebfe039…` — **coincide** |

@@ -1,0 +1,29 @@
+lab-hipotesis
+Laboratorio virtual de hipótesis
+Copyright 2026 MiltonREB
+
+Este producto incluye software desarrollado por el proyecto lab-hipotesis
+(https://github.com/MiltonREB/lab-hipotesis).
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+---------------------------------------------------------------------------
+Sobre los datos
+
+Los archivos de `datos/` y `resultados/` son material del proyecto y se
+distribuyen bajo la misma licencia, salvo que un archivo declare otra cosa en su
+propio encabezado o en `datos/manifiesto.json`.
+
+Los valores de referencia externos que se incorporen en el futuro (CODATA,
+IUPAC, modelos geodésicos) conservarán su propia licencia y cita; no se
+relicencian por incluirlos aquí.

@@ -1,0 +1,8 @@
+* text=auto eol=lf
+
+# Los datasets y los artefactos se comparan byte a byte en CI: nada de
+# conversiones de fin de línea que hagan fallar `git diff --exit-code`.
+*.csv  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.py   text eol=lf

@@ -1,0 +1,38 @@
+{
+  "creado_utc": "2026-11-24T17:57:44.572783+00:00",
+  "firma": {
+    "dataset_id": "pendulo_v1",
+    "dataset_validacion": "pendulo_holdout_v1",
+    "id": "pendulo_amplitud",
+    "incertidumbre_declarada": 0.001,
+    "metrica": "rmse",
+    "observable_objetivo": "T_s",
+    "parametros": [
+      {
+        "congelado": true,
+        "nombre": "g",
+        "unidad": "m/s^2",
+        "valor": 9.80665
+      },
+      {
+        "congelado": false,
+        "nombre": "c2",
+        "unidad": "rad^-2",
+        "valor": 0.0
+      },
+      {
+        "congelado": false,
+        "nombre": "c4",
+        "unidad": "rad^-4",
+        "valor": 0.0
+      }
+    ],
+    "semilla": 20261124,
+    "umbral_mejora": 0.1,
+    "umbral_sensibilidad": 0.0001,
+    "version": "1.0.0"
+  },
+  "firma_sha256": "2a1bbdc6b61f77de2f181902d61efad2fe44ba140bb996c01e5fb7695e2089d3",
+  "id": "pendulo_amplitud",
+  "tardio": false
+}

@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.tmp_pruebas/
+.tmp_*
+*.tmp
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# El panel es 100 % derivado de resultados/; se regenera con `lab panel`.
+panel/

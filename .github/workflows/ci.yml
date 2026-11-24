@@ -1,0 +1,52 @@
+name: laboratorio
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Instalar el paquete
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Integridad de los datos congelados
+        run: python -m lab datos verificar
+
+      - name: Los datasets se regeneran bit a bit
+        run: |
+          python datos/generar_datos.py
+          git diff --exit-code -- datos/
+
+      - name: Pruebas unitarias y de integración
+        run: python -m unittest discover -s pruebas -t . -v
+
+      - name: Corrida de demostración
+        run: |
+          python -m lab preregistrar --id pendulo_amplitud
+          python -m lab preregistrar --id pendulo_polinomio_alto
+          python -m lab ejecutar --todos --panel
+
+      - name: El panel generado es válido
+        run: python herramientas/verificar_panel.py
+
+      - name: Informe consolidado
+        run: python -m lab consolidado
+
+      - name: Cobertura mínima
+        run: python herramientas/cobertura.py --minimo 80

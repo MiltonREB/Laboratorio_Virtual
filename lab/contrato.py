@@ -170,6 +170,21 @@ class Modelo(ABC):
     def valores_iniciales(self) -> dict[str, float]:
         return {p.nombre: p.valor for p in self.parametros()}
 
+    def ajustar(
+        self,
+        variables: Mapping[str, np.ndarray],
+        observado: np.ndarray,
+        parametros: Mapping[str, float],
+    ) -> dict[str, float]:
+        """Ajusta parámetros libres usando SÓLO la muestra de calibración.
+
+        Por defecto no hay ajuste: los parámetros declarados son los usados.
+        Los baselines pueden sobrescribirlo igual que una hipótesis, y el
+        evaluador los ajusta con la misma calibración para que la comparación
+        sea justa (si uno ajusta g y el otro no, la ventaja es artificial).
+        """
+        return dict(parametros)
+
     @abstractmethod
     def predecir(
         self,

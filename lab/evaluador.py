@@ -153,6 +153,10 @@ def evaluar_hipotesis(
     sigma = dataset.sigma(observable) if hipotesis.metrica == "chi2_reducido" else None
 
     # -- ajuste y predicción -------------------------------------------
+    # Cada modelo se ajusta con la MISMA calibración. Si el baseline tiene
+    # parámetros libres (por ejemplo g medido), también se ajustan: comparar un
+    # modelo ajustado contra uno con constantes nominales sería una ventaja
+    # artificial.
     parametros_declarados = hipotesis.valores_iniciales()
     parametros_ajustados = dict(hipotesis.ajustar(vars_cal, y_cal, parametros_declarados))
     ajuste_usado = any(
@@ -166,10 +170,23 @@ def evaluar_hipotesis(
         if not p.congelado
     )
 
+    parametros_baseline = baseline.valores_iniciales()
+    parametros_baseline = dict(baseline.ajustar(vars_cal, y_cal, parametros_baseline))
+    baseline_ajustado = any(
+        not np.isclose(
+            float(parametros_baseline.get(p.nombre, np.nan)),
+            float(p.valor),
+            rtol=0.0,
+            atol=1e-15,
+        )
+        for p in baseline.parametros()
+        if not p.congelado
+    )
+
     pred_hip_cal = _predecir(hipotesis, vars_cal, parametros_ajustados, observable, y_cal.size, "calibración")
     pred_hip_res = _predecir(hipotesis, vars_res, parametros_ajustados, observable, y_res.size, "reservado")
-    pred_base_cal = _predecir(baseline, vars_cal, baseline.valores_iniciales(), observable, y_cal.size, "baseline/calibración")
-    pred_base_res = _predecir(baseline, vars_res, baseline.valores_iniciales(), observable, y_res.size, "baseline/reservado")
+    pred_base_cal = _predecir(baseline, vars_cal, parametros_baseline, observable, y_cal.size, "baseline/calibración")
+    pred_base_res = _predecir(baseline, vars_res, parametros_baseline, observable, y_res.size, "baseline/reservado")
 
     # -- errores y comparación -----------------------------------------
     errores_cal = _errores(hipotesis.metrica, y_cal, pred_hip_cal, pred_base_cal, sigma)
@@ -264,6 +281,8 @@ def evaluar_hipotesis(
         parametros_declarados=parametros_declarados,
         parametros_ajustados=parametros_ajustados,
         ajuste_usado=ajuste_usado,
+        parametros_baseline=parametros_baseline,
+        baseline_ajustado=baseline_ajustado,
         corrida=corrida,
         advertencias=advertencias,
         remuestreos=remuestreos,
@@ -360,8 +379,11 @@ def _estabilidad(
             params = h.ajustar(vars_cal, y_cal, h.valores_iniciales())
             ph = _predecir(h, vars_res, params, observable, y_res.size, f"estabilidad-{k}")
             assert h.baseline is not None
+            params_base = h.baseline.ajustar(
+                vars_cal, y_cal, h.baseline.valores_iniciales()
+            )
             pb = _predecir(
-                h.baseline, vars_res, h.baseline.valores_iniciales(),
+                h.baseline, vars_res, params_base,
                 observable, y_res.size, f"estabilidad-base-{k}",
             )
             eb = metricas.aplicar(h.metrica, pb, y_res)
@@ -426,17 +448,28 @@ def _control_nulo(
         if not np.isfinite(sigma) or sigma <= 0:
             return {"error": "no hay escala de ruido declarada ni residual del baseline"}
 
-        rng = np.random.default_rng(int(h.semilla) * 7919 + 13)
+        cal, res = dataset.calibracion, dataset.reservado
         vars_todas = dataset.variables_de(None, h.requiere)
+        vars_cal = {k: v[list(cal)] for k, v in vars_todas.items()}
+        vars_res = {k: v[list(res)] for k, v in vars_todas.items()}
+        y_cal_nulo = None
+        y_res_nulo = None
+        base_res = None
+
+        # El baseline también se ajusta aquí: si se le deja con valores
+        # nominales, la comparación sobre datos nulos no sería simétrica.
+        params_base = h.baseline.ajustar(
+            vars_cal,
+            dataset.observado(observable, cal),
+            h.baseline.valores_iniciales(),
+        )
+        rng = np.random.default_rng(int(h.semilla) * 7919 + 13)
         base_todas = _predecir(
-            h.baseline, vars_todas, h.baseline.valores_iniciales(),
+            h.baseline, vars_todas, params_base,
             observable, dataset.filas, "control-nulo-completo",
         )
         y_nulo = base_todas + rng.normal(0.0, sigma, size=base_todas.size)
 
-        cal, res = dataset.calibracion, dataset.reservado
-        vars_cal = {k: v[list(cal)] for k, v in vars_todas.items()}
-        vars_res = {k: v[list(res)] for k, v in vars_todas.items()}
         y_cal_nulo = y_nulo[list(cal)]
         y_res_nulo = y_nulo[list(res)]
         base_res = base_todas[list(res)]
@@ -593,12 +626,15 @@ def _resumen(**kw: Any) -> dict[str, Any]:
             "parametros_declarados": kw["parametros_declarados"],
             "parametros_ajustados": kw["parametros_ajustados"],
             "ajuste_usado": kw["ajuste_usado"],
+            "baseline_ajustado": kw["baseline_ajustado"],
             "baseline": {
                 "id": kw["baseline"].id,
                 "nombre": kw["baseline"].nombre,
                 "version": kw["baseline"].version,
                 "supuestos": kw["baseline"].supuestos,
                 "parametros": [p.como_dict() for p in kw["baseline"].parametros()],
+                "parametros_ajustados": kw["parametros_baseline"],
+                "ajustado": kw["baseline_ajustado"],
             },
         },
         "dataset": dataset.resumen(),

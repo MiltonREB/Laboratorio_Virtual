@@ -209,6 +209,7 @@
       "c15": -244.74168288814903
     },
     "ajuste_usado": true,
+    "baseline_ajustado": false,
     "baseline": {
       "id": "pendulo_lineal",
       "nombre": "Péndulo simple de pequeña amplitud",
@@ -222,7 +223,11 @@
           "congelado": true,
           "descripcion": "Gravedad estándar; no se ajusta"
         }
-      ]
+      ],
+      "parametros_ajustados": {
+        "g": 9.80665
+      },
+      "ajustado": false
     }
   },
   "dataset": {
@@ -246,6 +251,8 @@
     "ruido": {
       "T_s": 0.0008
     },
+    "incertidumbres": {},
+    "procedencia": "",
     "origen": "sintetico",
     "generado_por": "datos/generar_datos.py",
     "uso": "ajuste",
@@ -447,7 +454,7 @@
     "firma_actual": "bee360c3192a31054124d3daee52633a987c939f09704c6ed87d6a5dc8dc35d4",
     "ruta": "C:\\atomo\\laboratorio\\resultados\\preregistro\\pendulo_polinomio_alto\\20261124T192732879391Z.json",
     "creado_utc": "2026-11-24T19:27:32.879391+00:00",
-    "antiguedad_segundos": 146.450357,
+    "antiguedad_segundos": 1124.213725,
     "separacion_minima": 60.0,
     "publicado_utc": "2026-11-24T16:27:38-03:00",
     "publicado": true
@@ -503,7 +510,7 @@
       "codigo": "T04",
       "titulo": "Preregistro de parámetros y umbrales",
       "estado": "APROBADO",
-      "detalle": "Sello verificado (bee360c3192a…), sellado 2.4 min antes, publicado en git el 2026-11-24T16:27:38-03:00",
+      "detalle": "Sello verificado (bee360c3192a…), sellado 18.7 min antes, publicado en git el 2026-11-24T16:27:38-03:00",
       "evidencia": {
         "estado_preregistro": "VALIDO",
         "aceptable": true,
@@ -511,7 +518,7 @@
         "firma_actual": "bee360c3192a31054124d3daee52633a987c939f09704c6ed87d6a5dc8dc35d4",
         "ruta": "C:\\atomo\\laboratorio\\resultados\\preregistro\\pendulo_polinomio_alto\\20261124T192732879391Z.json",
         "creado_utc": "2026-11-24T19:27:32.879391+00:00",
-        "antiguedad_segundos": 146.450357,
+        "antiguedad_segundos": 1124.213725,
         "separacion_minima": 60.0,
         "publicado_utc": "2026-11-24T16:27:38-03:00",
         "publicado": true
@@ -716,12 +723,14 @@
       "codigo": "T10",
       "titulo": "Presupuesto de incertidumbre",
       "estado": "APROBADO",
-      "detalle": "El error observado es 1.28× la incertidumbre declarada",
+      "detalle": "El error observado es 1.28× el presupuesto (declarada 0.001)",
       "evidencia": {
         "incertidumbre_declarada": 0.001,
+        "incertidumbre_experimental": null,
+        "presupuesto_combinado": 0.001,
         "error_observado": 0.0012753283897094642,
         "residuo_rms": 0.0012753283897094642,
-        "razon_error_sobre_declarada": 1.275328389709464
+        "razon_error_sobre_presupuesto": 1.275328389709464
       },
       "es_ausencia": false
     },
@@ -896,7 +905,7 @@
     "archivo_hipotesis": "C:\\atomo\\laboratorio\\hipotesis\\pendulo_sobreajuste.py",
     "sha256_hipotesis": "fdfb0c37b71f0a1c68ccf77725cda0cd49f13672b6deb041b2c9da05ab555278",
     "clase": "PenduloPolinomioAlto",
-    "utc": "2026-11-24T19:29:59.724160+00:00"
+    "utc": "2026-11-24T19:46:17.422088+00:00"
   },
-  "corrida": "C:\\atomo\\laboratorio\\resultados\\pendulo_polinomio_alto_20261124T192959Z"
+  "corrida": "C:\\atomo\\laboratorio\\resultados\\pendulo_polinomio_alto_20261124T194617Z"
 }

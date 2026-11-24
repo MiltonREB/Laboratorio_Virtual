@@ -1,6 +1,6 @@
 # Informe consolidado del laboratorio
 
-**Generado (UTC):** 2026-11-24 19:31  
+**Generado (UTC):** 2026-11-24 19:46  
 **Hipótesis con corrida:** 2  
 **Corridas registradas:** 2
 

@@ -2,8 +2,8 @@
 
 **Hipótesis:** `pendulo_polinomio_alto` v1.0.0  
 **Veredicto:** ❌ NO CORROBORADA — `NO_CORROBORADA`  
-**Corrida:** `C:\atomo\laboratorio\resultados\pendulo_polinomio_alto_20261124T192959Z`  
-**Fecha (UTC):** 2026-11-24T19:29:59.724160+00:00  
+**Corrida:** `C:\atomo\laboratorio\resultados\pendulo_polinomio_alto_20261124T194617Z`  
+**Fecha (UTC):** 2026-11-24T19:46:17.422088+00:00  
 **Laboratorio:** v1.1.0
 
 > La hipótesis no superó la comparación con el baseline o no generalizó. No se refuta la idea, pero este diseño no la sostiene.
@@ -102,13 +102,13 @@ El ajuste usó 43 filas de calibración. Las 29 filas reservadas no participaron
 | T01 | Formalización del contrato | `APROBADO` | Enunciado, dominio, unidades, baseline, métrica y umbrales declarados |
 | T02 | Falsabilidad de la predicción | `APROBADO` | Predicción numérica finita y variable en 29 filas; el umbral de mejora 0.1 haría fallar la hipótesis si no se alcanza |
 | T03 | Predicción diferenciadora frente al baseline | `APROBADO` | |ΔO| máximo 0.0062 s = 7.5× el error del baseline (0.0008232) |
-| T04 | Preregistro de parámetros y umbrales | `APROBADO` | Sello verificado (bee360c3192a…), sellado 2.4 min antes, publicado en git el 2026-11-24T16:27:38-03:00 |
+| T04 | Preregistro de parámetros y umbrales | `APROBADO` | Sello verificado (bee360c3192a…), sellado 18.7 min antes, publicado en git el 2026-11-24T16:27:38-03:00 |
 | T05 | Calibración restringida a la muestra de calibración | `APROBADO` | 16 parámetro(s) ajustado(s) sólo con 43 filas de calibración; 29 filas reservadas intactas |
 | T06 | Validación fuera de muestra | `APROBADO` | Error fuera de muestra 0.00127533 dentro de 5× la escala 0.001 |
 | T07 | Comparación con el baseline convencional | `PENDIENTE` | mejora -0.5493 < umbral 0.1000; el IC [-1.3360, 0.0965] no permite rechazar la equivalencia |
 | T08 | Estabilidad de la conclusión ante el diseño | `SENSIBLE` | El signo de la mejora cambia con la partición: 3 positivas y 2 no positivas de 5. La conclusión depende del diseño, no sólo de los datos |
 | T09 | Reproducibilidad numérica | `APROBADO` | Dos ejecuciones producen la misma predicción y el mismo bootstrap (03a66bc18840…) |
-| T10 | Presupuesto de incertidumbre | `APROBADO` | El error observado es 1.28× la incertidumbre declarada |
+| T10 | Presupuesto de incertidumbre | `APROBADO` | El error observado es 1.28× el presupuesto (declarada 0.001) |
 | T11 | Control nulo por datos generados con el baseline | `APROBADO` | Sobre datos del baseline la mejora es -2.2906 (umbral exigido 0.1000): no se gana por artefacto |
 | T12 | Dominio de validez declarado | `APROBADO` | 43 filas de calibración y 29 reservadas dentro del dominio declarado |
 
@@ -155,7 +155,7 @@ Se generaron datos sintéticos con el **baseline** como verdad y ruido σ = 0.00
 |---|---|
 | estado | `VALIDO` |
 | coincide con la firma actual | sí |
-| antigüedad del sello (s) | 146 |
+| antigüedad del sello (s) | 1.12e+03 |
 | separación mínima exigida (s) | 60 |
 | publicado en git | 2026-11-24T16:27:38-03:00 |
 | firma en el sello | bee360c3192a31054124d3daee52633a987c939f09704c6ed87d6a5dc8dc35d4 |

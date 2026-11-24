@@ -497,9 +497,9 @@ def t09(resumen, predicciones, ancho=ANCHO_POR_DEFECTO, alto=ALTO_POR_DEFECTO) -
 
 def t10(resumen, predicciones, ancho=ANCHO_POR_DEFECTO, alto=ALTO_POR_DEFECTO) -> str:
     evidencia = _evidencia(resumen, "T10")
-    razon = evidencia.get("razon_error_sobre_declarada")
+    razon = evidencia.get("razon_error_sobre_presupuesto")
     if razon is None:
-        return _sin_datos(ancho, alto, "Sin presupuesto de incertidumbre declarado")
+        return _sin_datos(ancho, alto, "Sin presupuesto de incertidumbre")
     razon = float(razon)
     tope = max(4.0, razon * 1.2)
     x0, x1 = 20, ancho - 20

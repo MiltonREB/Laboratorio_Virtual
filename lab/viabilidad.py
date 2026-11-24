@@ -56,7 +56,7 @@ def evaluar(
     avisos.extend(_reservado(hipotesis, dataset))
     avisos.extend(_umbral_en_el_ruido(hipotesis, dataset, error_baseline))
     avisos.extend(_dominio(hipotesis, dataset))
-    avisos.extend(_incertidumbre(hipotesis))
+    avisos.extend(_incertidumbre(hipotesis, dataset))
     avisos.extend(_preregistro(verificacion))
     return avisos
 
@@ -154,14 +154,20 @@ def _dominio(h: Hipotesis, dataset: ConjuntoDatos) -> list[Aviso]:
     )]
 
 
-def _incertidumbre(h: Hipotesis) -> list[Aviso]:
-    if np.isfinite(float(h.incertidumbre_declarada)) and float(h.incertidumbre_declarada) > 0:
+def _incertidumbre(h: Hipotesis, dataset: ConjuntoDatos) -> list[Aviso]:
+    """Sólo avisa si no hay presupuesto por ninguna vía."""
+    declarada = float(h.incertidumbre_declarada)
+    if np.isfinite(declarada) and declarada > 0:
+        return []
+    experimental = dataset.incertidumbre_media(h.observable_objetivo)
+    if experimental is not None and experimental > 0:
         return []
     return [Aviso(
         "V05", "baja",
         "No se declara presupuesto de incertidumbre",
-        "T10 quedará en PENDIENTE y el informe no podrá decir si el error "
-        "observado cabe en lo esperado.",
+        "El dataset tampoco trae incertidumbre experimental por fila. T10 "
+        "quedará en PENDIENTE y el informe no podrá decir si el error observado "
+        "cabe en lo esperado.",
     )]
 
 

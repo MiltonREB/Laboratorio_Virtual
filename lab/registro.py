@@ -236,10 +236,10 @@ def cargar_registro(directorio: str | Path | None = None) -> Registro:
         )
         return registro
 
-    # Permite que los módulos importen el paquete ``lab`` aunque no esté instalado.
-    proyecto = str(raiz.parent)
-    if proyecto not in sys.path:
-        sys.path.insert(0, proyecto)
+    # Los módulos se importan bajo un alias con ``__path__`` propio, así que no
+    # hace falta añadir el directorio a ``sys.path``. Insertarlo contaminaba el
+    # intérprete: una carpeta ``hipotesis`` de prueba podía quedar por delante de
+    # la del proyecto y romper imports posteriores.
 
     archivos = sorted(p for p in raiz.glob("*.py") if not p.name.startswith("_"))
     paquete = _paquete_para(raiz) if (raiz / "__init__.py").is_file() else None

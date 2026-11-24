@@ -19,7 +19,7 @@ import traceback
 from pathlib import Path
 from typing import Sequence
 
-from . import consolidado, evaluador, panel as modulo_panel, preregistro
+from . import consolidado, evaluador, ingesta, panel as modulo_panel, preregistro
 from .datos import ErrorDeDatos, Manifiesto
 from .evaluador import ErrorDeEvaluacion, evaluar_hipotesis
 from .informe import resumen_consola
@@ -195,6 +195,7 @@ def cmd_ejecutar(args: argparse.Namespace) -> int:
     for otra in registro.hipotesis.values():
         comparten[otra.dataset_id] = comparten.get(otra.dataset_id, 0) + 1
     fallos = 0
+    evaluadas = 0
     resultados = []
     for id_ in ids:
         try:
@@ -202,6 +203,13 @@ def cmd_ejecutar(args: argparse.Namespace) -> int:
         except ErrorDeRegistro as exc:
             print(f"Error: {exc}", file=sys.stderr)
             fallos += 1
+            continue
+        if h.dataset_id and not manifiesto.contiene(h.dataset_id):
+            print(
+                f"[{id_}] omitida: el dataset '{h.dataset_id}' no está declarado "
+                "en el manifiesto. Regístralo con `lab ingestar`.",
+                file=sys.stderr,
+            )
             continue
         try:
             resultado = evaluar_hipotesis(
@@ -225,16 +233,103 @@ def cmd_ejecutar(args: argparse.Namespace) -> int:
             fallos += 1
             continue
         resultados.append(resultado)
+        evaluadas += 1
         print()
         print(resumen_consola(resultado))
         if not args.sin_guardar:
             print(f"Artefactos: {resultado.corrida}")
+
+    if evaluadas == 0:
+        print(
+            "\nNinguna hipótesis se pudo evaluar. Revisa el manifiesto de datos "
+            "(`lab datos verificar`) o registra el dataset con `lab ingestar`.",
+            file=sys.stderr,
+        )
+        return 2
 
     if args.panel and resultados:
         indice = modulo_panel.generar_panel(dir_resultados, raiz / "panel")
         print(f"\nPanel actualizado: {indice}")
 
     return 1 if fallos else 0
+
+
+def cmd_ingestar(args: argparse.Namespace) -> int:
+    raiz = _raiz(args)
+    dir_datos = _rutas(raiz)[1]
+    try:
+        entrada = ingesta.registrar(
+            args.csv,
+            dir_datos,
+            id_=args.id,
+            fraccion_calibracion=args.fraccion,
+            semilla=args.semilla,
+            procedencia=args.procedencia,
+            descripcion=args.descripcion,
+            reemplazar=args.reemplazar,
+        )
+    except (ingesta.ErrorDeIngesta, ErrorDeDatos) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"Dataset ingresado: {entrada['id']}")
+    print(f"  archivo:   {dir_datos / entrada['ruta']}")
+    print(f"  filas:     {entrada['filas']}")
+    print(f"  partición: {len(entrada['calibracion'])} calibración / "
+          f"{len(entrada['reservado'])} reservado "
+          f"(fracción {entrada['particion']['fraccion_calibracion']}, "
+          f"semilla {entrada['particion']['semilla']})")
+    print(f"  sha256:    {entrada['sha256']}")
+    if entrada.get("incertidumbres"):
+        print(f"  incertidumbres: {entrada['incertidumbres']}")
+    else:
+        print("  incertidumbres: no declaradas (T10 dependerá del presupuesto)")
+    print()
+    print("La partición queda congelada en el manifiesto. Para evaluar:")
+    print(f"  lab ejecutar --id <hipotesis que use '{entrada['id']}'>")
+    return 0
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    """Ingesta (si hace falta) y evalúa en un solo paso.
+
+    Equivale a `lab ingestar` + `lab ejecutar`. No sella: el preregistro debe
+    hacerse antes, o T04 quedará en PENDIENTE y el veredicto lo dirá.
+    """
+    raiz = _raiz(args)
+    dir_datos = _rutas(raiz)[1]
+    try:
+        manifiesto = Manifiesto.desde_directorio(dir_datos)
+        ids = manifiesto.ids
+    except ErrorDeDatos:
+        ids = ()
+    if args.id not in ids:
+        args_csv = args.csv
+        if not args_csv:
+            print(
+                f"El dataset '{args.id}' no está en el manifiesto y no se indicó "
+                "--csv para ingerirlo.",
+                file=sys.stderr,
+            )
+            return 2
+        try:
+            entrada = ingesta.registrar(
+                args_csv,
+                dir_datos,
+                id_=args.id,
+                fraccion_calibracion=args.fraccion,
+                semilla=args.semilla,
+                procedencia=args.procedencia,
+                descripcion=args.descripcion,
+                reemplazar=args.reemplazar,
+            )
+        except (ingesta.ErrorDeIngesta, ErrorDeDatos) as exc:
+            print(f"Error al ingerir: {exc}", file=sys.stderr)
+            return 1
+        print(f"Dataset '{entrada['id']}' registrado con {entrada['filas']} filas.")
+    args.id = args.hipotesis
+    args.todos = False
+    return cmd_ejecutar(args)
 
 
 def cmd_estado(args: argparse.Namespace) -> int:
@@ -481,6 +576,40 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--panel", action="store_true",
                    help="Regenera el panel al terminar")
     p.set_defaults(func=cmd_ejecutar)
+
+    p = sub.add_parser("ingestar", help="Registra un CSV real en el manifiesto")
+    p.add_argument("--csv", required=True, help="Ruta del CSV (L_m, theta0_rad, T_s, u_*)")
+    p.add_argument("--id", required=True, help="Identificador del dataset")
+    p.add_argument("--fraccion", type=float, default=0.6,
+                   help="Fracción de calibración (por defecto 0.6)")
+    p.add_argument("--semilla", type=int, default=2026,
+                   help="Semilla de la partición, que queda registrada")
+    p.add_argument("--procedencia", default="", help="Quién, cuándo y con qué instrumento")
+    p.add_argument("--descripcion", default="", help="Descripción del dataset")
+    p.add_argument("--reemplazar", action="store_true",
+                   help="Sustituye una entrada existente con el mismo id")
+    p.set_defaults(func=cmd_ingestar)
+
+    p = sub.add_parser("run", help="Ingesta un CSV (si hace falta) y evalúa")
+    p.add_argument("--csv", help="CSV a ingerir si el dataset no está registrado")
+    p.add_argument("--id", required=True, help="Identificador del dataset")
+    p.add_argument("--hipotesis", required=True, help="Hipótesis a evaluar")
+    p.add_argument("--fraccion", type=float, default=0.6)
+    p.add_argument("--semilla", type=int, default=2026)
+    p.add_argument("--procedencia", default="")
+    p.add_argument("--descripcion", default="")
+    p.add_argument("--reemplazar", action="store_true")
+    p.add_argument("--remuestreos", type=int,
+                   default=evaluador.REMUESTREOS_POR_DEFECTO)
+    p.add_argument("--particiones", type=int,
+                   default=evaluador.PARTICIONES_POR_DEFECTO)
+    p.add_argument("--sin-guardar", action="store_true")
+    p.add_argument("--sensibilidad-bootstrap", action="store_true")
+    p.add_argument("--separacion-minima", type=float,
+                   default=evaluador.SEPARACION_MINIMA_POR_DEFECTO)
+    p.add_argument("--exigir-publicacion", action="store_true")
+    p.add_argument("--panel", action="store_true")
+    p.set_defaults(func=cmd_run)
 
     p = sub.add_parser("estado", help="Matriz de estados de la última corrida")
     p.add_argument("--json", action="store_true")

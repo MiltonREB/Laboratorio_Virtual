@@ -43,7 +43,7 @@ RESUMEN_MINIMO = {
         {"codigo": "T06", "estado": "APROBADO",
          "evidencia": {"escala": 0.1, "factor_admitido": 5.0}},
         {"codigo": "T10", "estado": "APROBADO",
-         "evidencia": {"razon_error_sobre_declarada": 1.2}},
+         "evidencia": {"razon_error_sobre_presupuesto": 1.2}},
         {"codigo": "T12", "estado": "APROBADO",
          "evidencia": {"rango_declarado": {"x": [0.0, 10.0]},
                        "observado": {"x": {"min": 1.0, "max": 9.0, "filas": 12}},

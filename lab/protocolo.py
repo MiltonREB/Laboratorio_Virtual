@@ -111,10 +111,24 @@ class ContextoEvaluacion:
         )
 
     @property
-    def escala_de_validacion(self) -> float:
+    def presupuesto_incertidumbre(self) -> float:
+        """Presupuesto combinado: incertidumbre declarada ⊕ experimental.
+
+        Si el dataset trae columnas ``u_*``, entran en cuadratura como término
+        explícito. Es la diferencia entre «el ajuste deja 0,8 ms» y «el
+        instrumento no resuelve mejor de 1,2 ms».
+        """
         declarada = float(self.hipotesis.incertidumbre_declarada)
-        if np.isfinite(declarada) and declarada > 0:
-            return declarada
+        declarada = declarada if np.isfinite(declarada) and declarada > 0 else None
+        return self.dataset.escala_efectiva(
+            self.hipotesis.observable_objetivo, declarada
+        )
+
+    @property
+    def escala_de_validacion(self) -> float:
+        presupuesto = self.presupuesto_incertidumbre
+        if presupuesto > 0:
+            return presupuesto
         base = float(self.errores_reservado.get("baseline", float("nan")))
         return base if np.isfinite(base) and base > 0 else 1.0
 
@@ -471,18 +485,29 @@ def t09_reproducibilidad(ctx: ContextoEvaluacion) -> ResultadoPrueba:
 
 
 def t10_incertidumbre(ctx: ContextoEvaluacion) -> ResultadoPrueba:
+    """Presupuesto de incertidumbre: declarado ⊕ experimental.
+
+    v1.1.0 usa las columnas ``u_*`` del dataset como término explícito. «El
+    ajuste deja 0,8 ms» y «el instrumento no resuelve mejor de 1,2 ms» son
+    afirmaciones distintas, y el presupuesto debe contener las dos.
+    """
     declarada = float(ctx.hipotesis.incertidumbre_declarada)
+    experimental = ctx.dataset.incertidumbre_media(ctx.hipotesis.observable_objetivo)
+    presupuesto = ctx.presupuesto_incertidumbre
     error = float(ctx.errores_reservado.get("hipotesis", float("nan")))
     datos = {
         "incertidumbre_declarada": None if not np.isfinite(declarada) else declarada,
+        "incertidumbre_experimental": experimental,
+        "presupuesto_combinado": presupuesto or None,
         "error_observado": _num(error),
         "residuo_rms": float(np.sqrt(np.mean(ctx.residuo_reservado ** 2)))
         if ctx.residuo_reservado.size else None,
     }
-    if not np.isfinite(declarada) or declarada <= 0:
+    if presupuesto <= 0:
         return ResultadoPrueba(
             "T10", TITULOS["T10"], "PENDIENTE",
-            "La hipótesis no declara presupuesto de incertidumbre para el observable",
+            "La hipótesis no declara presupuesto de incertidumbre y el dataset "
+            "no trae incertidumbre experimental por fila",
             datos,
         )
     if not np.isfinite(error):
@@ -491,14 +516,21 @@ def t10_incertidumbre(ctx: ContextoEvaluacion) -> ResultadoPrueba:
             "No hay error utilizable para comparar con la incertidumbre declarada",
             datos,
         )
-    razon = error / declarada
-    datos["razon_error_sobre_declarada"] = razon
+    razon = error / presupuesto
+    datos["razon_error_sobre_presupuesto"] = razon
+    componentes = []
+    if datos["incertidumbre_declarada"]:
+        componentes.append(f"declarada {datos['incertidumbre_declarada']:.3g}")
+    if experimental:
+        componentes.append(f"experimental {experimental:.3g}")
+    detalle_componentes = " ⊕ ".join(componentes) if componentes else "sin componentes"
     if razon > FACTOR_INCERTIDUMBRE:
         return ResultadoPrueba(
             "T10", TITULOS["T10"], "FALLIDO",
             (
-                f"El error observado es {razon:.1f}× la incertidumbre declarada "
-                f"({error:.6g} vs {declarada:.6g}): el presupuesto está subestimado"
+                f"El error observado es {razon:.1f}× el presupuesto "
+                f"({error:.6g} vs {presupuesto:.6g}; {detalle_componentes}): "
+                "el presupuesto está subestimado"
             ),
             datos,
         )
@@ -506,14 +538,18 @@ def t10_incertidumbre(ctx: ContextoEvaluacion) -> ResultadoPrueba:
         return ResultadoPrueba(
             "T10", TITULOS["T10"], "PENDIENTE",
             (
-                f"El error observado es {razon:.2f}× la incertidumbre declarada: el "
-                "presupuesto parece inflado y no informa sobre la precisión real"
+                f"El error observado es {razon:.2f}× el presupuesto "
+                f"({detalle_componentes}): el presupuesto parece inflado y no "
+                "informa sobre la precisión real"
             ),
             datos,
         )
     return ResultadoPrueba(
         "T10", TITULOS["T10"], "APROBADO",
-        f"El error observado es {razon:.2f}× la incertidumbre declarada",
+        (
+            f"El error observado es {razon:.2f}× el presupuesto "
+            f"({detalle_componentes})"
+        ),
         datos,
     )
 

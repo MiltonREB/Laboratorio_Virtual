@@ -35,7 +35,7 @@ class TestComandosReales(unittest.TestCase):
         codigo, salida, _ = correr(["hipotesis", "--json"])
         self.assertEqual(codigo, 0)
         datos = json.loads(salida)
-        self.assertEqual(len(datos["hipotesis"]), 2)
+        self.assertEqual(len(datos["hipotesis"]), 3)
         self.assertEqual(datos["errores"], [])
 
     def test_datos_verificar(self):
@@ -211,8 +211,10 @@ class TestAndamiaje(unittest.TestCase):
             json.dumps({"version": 1, "datasets": [entrada]}), encoding="utf-8"
         )
         codigo, _, error = correr(["--raiz", str(self.raiz), "ejecutar", "--id", "h5"])
-        self.assertEqual(codigo, 1)
-        self.assertIn("no se pudo evaluar", error)
+        # El dataset declarado por la hipótesis no está: se omite con aviso y,
+        # como no se evaluó nada, el código de salida es 2.
+        self.assertEqual(codigo, 2)
+        self.assertIn("no está declarado", error)
         self.assertIn("TODO_dataset", error)
 
 

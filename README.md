@@ -23,8 +23,8 @@ protocolo con estos datos, no que sea verdadera.
 | Elemento | Cantidad |
 |---|---|
 | Protocolo | v1.1.0 ([changelog metodológico](CHANGELOG_METODOLOGICO.md)) |
-| Hipótesis evaluadas | 2 (una de control positivo, una de control negativo) |
-| Pruebas del propio laboratorio | 297 (`python -m unittest discover -s pruebas -t .`) |
+| Hipótesis evaluadas | 3 (dos sintéticas de control y una preparada para datos medidos) |
+| Pruebas del propio laboratorio | 326 (`python -m unittest discover -s pruebas -t .`) |
 | Pruebas del protocolo (por hipótesis) | 12, todas bloqueantes |
 | Verificaciones adicionales | 5 (O01–O05); O01 y O04 vinculantes |
 | Gráficos por corrida | 12 (uno por prueba) + los de verificación ejecutada |
@@ -95,6 +95,7 @@ laboratorio\
 ├── lab\                  motor del laboratorio (no depende del dominio)
 │   ├── contrato.py       Modelo, Hipotesis, Dominio, Parametro, estados
 │   ├── datos.py          manifiesto, SHA-256, particiones congeladas
+│   ├── ingesta.py        registro de CSV reales (esquema, hash, partición)
 │   ├── preregistro.py    sello criptográfico de parámetros y umbrales
 │   ├── metricas.py       rmse / mae / chi2, bootstrap, reglas de decisión
 │   ├── protocolo.py      batería T01–T12
@@ -113,7 +114,8 @@ laboratorio\
 ├── herramientas\         verificación del panel, adaptador y cobertura
 ├── resultados\           una carpeta por corrida + sellos + consolidado
 ├── panel\                panel HTML generado (no versionado)
-├── pruebas\              297 pruebas del propio laboratorio
+├── pruebas\              326 pruebas del propio laboratorio
+│   └── fixtures\         CSV con el esquema real (sintético, sólo para pruebas)
 └── .github\workflows\    integración continua
 ```
 
@@ -212,6 +214,43 @@ cambian el veredicto** y ahorran corridas: parámetros libres frente a filas de
 calibración, tamaño del reservado, umbral dentro del ruido, cobertura del dominio,
 presupuesto de incertidumbre y estado del preregistro. Aparecen en el informe, en
 el panel y en la consola.
+
+## Datos reales (preparación de la Fase 1)
+
+El laboratorio acepta un CSV medido, no sólo sus datasets sintéticos. Esquema:
+
+```
+L_m, theta0_rad, T_s, u_T_s, u_L_m, u_theta0_rad
+```
+
+Las columnas `u_*` son incertidumbres por fila. Si `u_T_s` existe, T10 la usa como
+término explícito del presupuesto (`sqrt(declarada² + experimental²)`); si no
+existe, lo dice en vez de inventarla.
+
+```powershell
+& $py -m lab ingestar --csv mi_medicion.csv --id pendulo_real `
+      --procedencia "Laboratorio docente, 2026-11-24, fotopuerta"
+& $py -m lab preregistrar --id pendulo_amplitud_real
+& $py -m lab ejecutar --id pendulo_amplitud_real
+```
+
+`lab ingestar` calcula el SHA-256, comprueba el esquema, fija la partición
+calibración/reservado con una semilla registrada y la congela en el manifiesto.
+También existe `lab run --csv ... --id ... --hipotesis ...` para hacer ingesta y
+evaluación en un paso.
+
+La hipótesis `pendulo_amplitud_real` es la que corresponde a datos medidos:
+estima `g` con la calibración (no la fija en 9.80665), declara `c2` y `c4` libres
+y exige un baseline alternativo. Su baseline también se ajusta: comparar un
+modelo con `g` ajustada contra otro con `g` nominal daría una ventaja artificial.
+
+**Confondo documentado:** el estimador de `g` del baseline ignora la corrección de
+amplitud, así que queda un sesgo residual a la baja de ~0.3 % que favorece
+levemente a la hipótesis. Está medido en las pruebas y anotado en el changelog.
+
+**Esto no es la Fase 1.** `pruebas/fixtures/pendulo_medido_fixture.csv` es
+sintético: tiene el esquema real para probar la tubería, no para producir
+evidencia. No hay ninguna medición todavía.
 
 ## Adaptadores para código heredado
 

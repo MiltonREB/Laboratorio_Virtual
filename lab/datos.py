@@ -86,10 +86,40 @@ class ConjuntoDatos:
     ruido: Mapping[str, float] = field(default_factory=dict)
     notas: str = ""
     uso: str = "ajuste"
+    #: Incertidumbre experimental por fila, por observable (``u_T_s`` -> arreglo).
+    incertidumbres: Mapping[str, np.ndarray] = field(default_factory=dict)
+    #: Quién, cuándo y con qué instrumento se tomaron los datos.
+    procedencia: str = ""
 
     @property
     def es_validacion_externa(self) -> bool:
         return self.uso == USO_VALIDACION_EXTERNA
+
+    def incertidumbre_media(self, observable: str) -> float | None:
+        """RMS de la incertidumbre por fila, o ``None`` si no se declaró."""
+        valores = self.incertidumbres.get(observable)
+        if valores is None:
+            return None
+        arreglo = np.asarray(valores, dtype=float)
+        if arreglo.size == 0 or not np.all(np.isfinite(arreglo)):
+            return None
+        return float(np.sqrt(np.mean(arreglo ** 2)))
+
+    def escala_efectiva(self, observable: str, declarada: float | None = None) -> float:
+        """Presupuesto de incertidumbre combinado: declarado ⊕ experimental.
+
+        Se combinan en cuadratura porque son fuentes independientes. Si no hay
+        ninguna de las dos, se devuelve 0.0 y quien llame decide qué hacer.
+        """
+        partes: list[float] = []
+        if declarada is not None and np.isfinite(float(declarada)) and float(declarada) > 0:
+            partes.append(float(declarada))
+        media = self.incertidumbre_media(observable)
+        if media is not None and media > 0:
+            partes.append(media)
+        if not partes:
+            return 0.0
+        return float(np.sqrt(np.sum(np.square(partes))))
 
     # -- integridad ----------------------------------------------------
 
@@ -163,6 +193,10 @@ class ConjuntoDatos:
             "calibracion": len(self.calibracion),
             "reservado": len(self.reservado),
             "ruido": dict(self.ruido),
+            "incertidumbres": {
+                k: self.incertidumbre_media(k) for k in self.incertidumbres
+            },
+            "procedencia": self.procedencia,
             "origen": self.origen,
             "generado_por": self.generado_por,
             "uso": self.uso,
@@ -240,6 +274,7 @@ class Manifiesto:
             )
 
         calibracion, reservado = _leer_particion(e, filas, id_)
+        incertidumbres = _leer_incertidumbres(e, columnas, id_)
         conjunto = ConjuntoDatos(
             id=id_,
             ruta=ruta,
@@ -257,6 +292,8 @@ class Manifiesto:
             ruido={str(k): float(v) for k, v in dict(e.get("ruido", {})).items()},
             notas=str(e.get("notas", "")),
             uso=str(e.get("uso", "ajuste")),
+            incertidumbres=incertidumbres,
+            procedencia=str(e.get("procedencia", "")),
         )
         self._cache[id_] = conjunto
         return conjunto
@@ -290,6 +327,31 @@ class Manifiesto:
 
     def resumen(self) -> list[dict[str, object]]:
         return [self.cargar(i).resumen() for i in self.ids]
+
+
+def _leer_incertidumbres(
+    entrada: Mapping[str, object],
+    columnas: Mapping[str, np.ndarray],
+    id_: str,
+) -> dict[str, np.ndarray]:
+    """Carga las columnas de incertidumbre declaradas (``u_T_s``, etc.)."""
+    declaradas = dict(entrada.get("incertidumbres", {}) or {})
+    salida: dict[str, np.ndarray] = {}
+    for observable, columna in declaradas.items():
+        nombre = str(columna)
+        if nombre not in columnas:
+            raise ErrorDeDatos(
+                f"Dataset '{id_}': declara la incertidumbre '{nombre}' para "
+                f"'{observable}' pero esa columna no existe en el CSV"
+            )
+        arreglo = np.asarray(columnas[nombre], dtype=float)
+        if np.any(~np.isfinite(arreglo)) or np.any(arreglo < 0):
+            raise ErrorDeDatos(
+                f"Dataset '{id_}': la columna '{nombre}' tiene valores no "
+                "finitos o negativos"
+            )
+        salida[str(observable)] = arreglo
+    return salida
 
 
 def _leer_particion(

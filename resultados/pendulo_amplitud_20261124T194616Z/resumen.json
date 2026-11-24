@@ -66,6 +66,7 @@
       "c4": 0.003595309299855132
     },
     "ajuste_usado": true,
+    "baseline_ajustado": false,
     "baseline": {
       "id": "pendulo_lineal",
       "nombre": "Péndulo simple de pequeña amplitud",
@@ -79,7 +80,11 @@
           "congelado": true,
           "descripcion": "Gravedad estándar; no se ajusta"
         }
-      ]
+      ],
+      "parametros_ajustados": {
+        "g": 9.80665
+      },
+      "ajustado": false
     }
   },
   "dataset": {
@@ -103,6 +108,8 @@
     "ruido": {
       "T_s": 0.0008
     },
+    "incertidumbres": {},
+    "procedencia": "",
     "origen": "sintetico",
     "generado_por": "datos/generar_datos.py",
     "uso": "ajuste",
@@ -304,7 +311,7 @@
     "firma_actual": "0d700ebfe0394344261133fafb1d7ce00435e293eb60df2794f775e65d3fefa2",
     "ruta": "C:\\atomo\\laboratorio\\resultados\\preregistro\\pendulo_amplitud\\20261124T192732031946Z.json",
     "creado_utc": "2026-11-24T19:27:32.031946+00:00",
-    "antiguedad_segundos": 146.640558,
+    "antiguedad_segundos": 1124.398942,
     "separacion_minima": 60.0,
     "publicado_utc": "2026-11-24T16:27:38-03:00",
     "publicado": true
@@ -360,7 +367,7 @@
       "codigo": "T04",
       "titulo": "Preregistro de parámetros y umbrales",
       "estado": "APROBADO",
-      "detalle": "Sello verificado (0d700ebfe039…), sellado 2.4 min antes, publicado en git el 2026-11-24T16:27:38-03:00",
+      "detalle": "Sello verificado (0d700ebfe039…), sellado 18.7 min antes, publicado en git el 2026-11-24T16:27:38-03:00",
       "evidencia": {
         "estado_preregistro": "VALIDO",
         "aceptable": true,
@@ -368,7 +375,7 @@
         "firma_actual": "0d700ebfe0394344261133fafb1d7ce00435e293eb60df2794f775e65d3fefa2",
         "ruta": "C:\\atomo\\laboratorio\\resultados\\preregistro\\pendulo_amplitud\\20261124T192732031946Z.json",
         "creado_utc": "2026-11-24T19:27:32.031946+00:00",
-        "antiguedad_segundos": 146.640558,
+        "antiguedad_segundos": 1124.398942,
         "separacion_minima": 60.0,
         "publicado_utc": "2026-11-24T16:27:38-03:00",
         "publicado": true
@@ -527,12 +534,14 @@
       "codigo": "T10",
       "titulo": "Presupuesto de incertidumbre",
       "estado": "APROBADO",
-      "detalle": "El error observado es 0.82× la incertidumbre declarada",
+      "detalle": "El error observado es 0.82× el presupuesto (declarada 0.001)",
       "evidencia": {
         "incertidumbre_declarada": 0.001,
+        "incertidumbre_experimental": null,
+        "presupuesto_combinado": 0.001,
         "error_observado": 0.0008172198487642368,
         "residuo_rms": 0.0008172198487642368,
-        "razon_error_sobre_declarada": 0.8172198487642368
+        "razon_error_sobre_presupuesto": 0.8172198487642368
       },
       "es_ausencia": false
     },
@@ -737,7 +746,7 @@
     "archivo_hipotesis": "C:\\atomo\\laboratorio\\hipotesis\\pendulo_amplitud.py",
     "sha256_hipotesis": "8d6ea4f64e08ae9477ae804fa054fd83779b208644addd7d96af7d46f297735f",
     "clase": "PenduloAmplitudFinita",
-    "utc": "2026-11-24T19:29:59.317761+00:00"
+    "utc": "2026-11-24T19:46:17.081118+00:00"
   },
-  "corrida": "C:\\atomo\\laboratorio\\resultados\\pendulo_amplitud_20261124T192959Z"
+  "corrida": "C:\\atomo\\laboratorio\\resultados\\pendulo_amplitud_20261124T194616Z"
 }

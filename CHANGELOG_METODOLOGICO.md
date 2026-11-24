@@ -126,6 +126,38 @@ resultado no va a ser interpretable, en lugar de dejar que el lector la deduzca.
 
 ---
 
+## Extensión para datos reales (misma versión de protocolo)
+
+Preparación de la Fase 1. No cambia el número de pruebas ni el vocabulario, pero
+sí dos definiciones:
+
+**T10 — presupuesto combinado.** El presupuesto de incertidumbre pasa a ser
+`sqrt(declarada² + experimental²)`, donde la experimental es el RMS de la
+columna ``u_T_s`` del dataset. Si la hipótesis no declara nada pero el dataset
+trae incertidumbre por fila, T10 **sí** puede evaluarse; antes quedaba en
+`PENDIENTE`. Motivo: «el ajuste deja 0,8 ms» y «el instrumento no resuelve mejor
+de 1,2 ms» son afirmaciones distintas y el presupuesto debe contener ambas.
+
+**Ajuste del baseline.** El evaluador ajusta ahora también los parámetros libres
+del baseline con la misma calibración. Antes el baseline se usaba con sus valores
+nominales. Con datos reales eso era insostenible: si la hipótesis estima g y el
+baseline la tiene fijada en 9.80665, la ventaja es artificial. La comparación
+ahora es entre dos modelos ajustados con los mismos datos.
+
+**Confondo conocido y documentado.** El estimador de g del baseline
+(`ajustar_g`) ignora la corrección de amplitud y usa el cuartil inferior de θ0
+para reducir el sesgo. Queda un sesgo residual a la baja del orden del 0.3 %, que
+infla el error del baseline y favorece levemente a la hipótesis. Está medido en
+las pruebas (`test_el_baseline_ajusta_g` comprueba dirección y magnitud) y no se
+oculta. Corregirlo exige un ajuste conjunto (g, c2) o un tramo de amplitudes
+pequeñas dedicado, que es trabajo de la Fase 1 con datos reales.
+
+**Lo que esto NO es.** El CSV de `pruebas/fixtures/` es sintético. Tiene las
+columnas del esquema real para probar la tubería, no para producir evidencia. La
+Fase 1 sigue abierta: no hay ninguna medición.
+
+---
+
 ## Efecto sobre las corridas de referencia
 
 | Hipótesis | v1.0.0 | v1.1.0 | Motivo |

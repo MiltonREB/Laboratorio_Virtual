@@ -158,6 +158,31 @@ Fase 1 sigue abierta: no hay ninguna medición.
 
 ---
 
+## Registro de publicación (cierre de 0.4b)
+
+El preregistro deja de ser un commit local con fecha ajustable:
+
+| Dato | Valor |
+|---|---|
+| Repositorio | https://github.com/MiltonREB/Laboratorio_Virtual |
+| Commit que publica los sellos | `14bf993e5b0c4520d5e20ea3a7716c28bde82d04` |
+| Sello de `pendulo_amplitud` | [ver en ese commit](https://github.com/MiltonREB/Laboratorio_Virtual/blob/14bf993e5b0c4520d5e20ea3a7716c28bde82d04/resultados/preregistro/pendulo_amplitud/20261124T192732031946Z.json) |
+| Sello de `pendulo_polinomio_alto` | [ver en ese commit](https://github.com/MiltonREB/Laboratorio_Virtual/blob/14bf993e5b0c4520d5e20ea3a7716c28bde82d04/resultados/preregistro/pendulo_polinomio_alto/20261124T192732879391Z.json) |
+| `main` publicado al registrar esto | `5dba31a9442402ea161afa5e5433a19a362bc10b` |
+| Comprobación | `git merge-base --is-ancestor 14bf993 HEAD` → sí |
+
+El commit del preregistro es **anterior** a cualquier dato de la Fase 1: cuando
+se publicó, esa fase no había empezado.
+
+**Advertencia de visibilidad.** En el momento de escribir esto el repositorio es
+**privado** (la API pública devuelve 404). Un repositorio privado no acredita
+nada ante terceros: la URL no resuelve sin credenciales. El criterio de 0.4b se
+cierra sólo cuando el repositorio sea público, y entonces estas URL serán
+resolubles por cualquiera. Mientras siga privado, el preregistro es verificable
+por quien tenga acceso, no por un tercero.
+
+---
+
 ## Efecto sobre las corridas de referencia
 
 | Hipótesis | v1.0.0 | v1.1.0 | Motivo |

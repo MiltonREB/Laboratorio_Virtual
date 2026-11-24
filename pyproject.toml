@@ -12,5 +12,9 @@ dependencies = ["numpy>=1.24"]
 [project.scripts]
 lab = "lab.cli:main"
 
+[project.urls]
+Homepage = "https://github.com/MiltonREB/Laboratorio_Virtual"
+Source = "https://github.com/MiltonREB/Laboratorio_Virtual"
+
 [tool.setuptools]
 packages = ["lab", "hipotesis"]

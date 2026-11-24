@@ -1,5 +1,8 @@
 # Laboratorio virtual de hipótesis
 
+[![estado](https://img.shields.io/badge/protocolo-v1.1.0-blue)](CHANGELOG_METODOLOGICO.md)
+[![repositorio](https://img.shields.io/badge/github-Laboratorio__Virtual-181717)](https://github.com/MiltonREB/Laboratorio_Virtual)
+
 Un marco para **contrastar hipótesis cuantitativas** de cualquier dominio con un
 protocolo fijo: preregistro de parámetros y umbrales, calibración separada,
 validación sobre datos reservados, comparación contra un baseline convencional,

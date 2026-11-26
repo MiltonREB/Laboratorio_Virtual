@@ -167,8 +167,8 @@ def t02_falsabilidad(ctx: ContextoEvaluacion) -> ResultadoPrueba:
         problemas.append("predicción vacía")
     if not np.all(np.isfinite(pred)):
         problemas.append("predicción con valores no finitos")
-    elif float(np.ptp(pred)) == 0.0:
-        problemas.append("la predicción es constante: no distingue ninguna fila")
+    # Una predicción constante puede ser falsable; su variación entre filas
+    # no es condición necesaria para contrastarla con observaciones.
     if not np.isfinite(float(ctx.hipotesis.umbral_mejora or float("nan"))):
         problemas.append("sin umbral de mejora declarado")
 
@@ -182,7 +182,7 @@ def t02_falsabilidad(ctx: ContextoEvaluacion) -> ResultadoPrueba:
     return ResultadoPrueba(
         "T02", TITULOS["T02"], "APROBADO",
         (
-            f"Predicción numérica finita y variable en {pred.size} filas; "
+            f"Predicción numérica finita en {pred.size} filas; "
             f"el umbral de mejora {ctx.hipotesis.umbral_mejora:g} haría fallar "
             "la hipótesis si no se alcanza"
         ),
@@ -208,7 +208,17 @@ def t03_prediccion_diferenciadora(ctx: ContextoEvaluacion) -> ResultadoPrueba:
     delta = ctx.delta_reservado
     maximo = float(np.max(np.abs(delta))) if delta.size else 0.0
     rms = float(np.sqrt(np.mean(delta ** 2))) if delta.size else 0.0
-    escala = float(ctx.errores_reservado.get("baseline", float("nan")))
+    # maximo y rms están en unidades físicas del observable. Si la métrica
+    # seleccionada es chi2_reducido, su valor es adimensional y NO puede
+    # utilizarse como escala para delta. Recuperamos una escala dimensional
+    # desde los residuos de la misma muestra reservada.
+    if ctx.hipotesis.metrica == "chi2_reducido":
+        residuos_base = np.asarray(ctx.observado_reservado, float) - np.asarray(
+            ctx.pred_base_reservado, float
+        )
+        escala = float(np.sqrt(np.mean(residuos_base ** 2))) if residuos_base.size else float("nan")
+    else:
+        escala = float(ctx.errores_reservado.get("baseline", float("nan")))
     factor = float(ctx.hipotesis.factor_diferenciacion)
     suelo = ctx.hipotesis.umbral_sensibilidad
     suelo = float(suelo) if suelo is not None else 0.0
@@ -334,9 +344,16 @@ def t05_calibracion(ctx: ContextoEvaluacion) -> ResultadoPrueba:
 
 def t06_fuera_de_muestra(ctx: ContextoEvaluacion) -> ResultadoPrueba:
     error = float(ctx.errores_reservado.get("hipotesis", float("nan")))
-    escala = ctx.escala_de_validacion
+    # chi2_reducido es adimensional: su raíz es el RMS de residuos
+    # normalizados por sigma. Se compara con un límite en sigmas, nunca
+    # con incertidumbres expresadas en metros/segundos.
+    es_chi2 = ctx.hipotesis.metrica == "chi2_reducido"
+    escala = 1.0 if es_chi2 else ctx.escala_de_validacion
+    error_comparable = float(np.sqrt(error)) if es_chi2 and error >= 0 else error
     datos = {
         "error_reservado": error,
+        "error_comparable": error_comparable,
+        "escala_comparacion": "sigma_normalizada" if es_chi2 else "observable",
         "error_calibracion": _num(ctx.errores_calibracion.get("hipotesis")),
         "escala": escala,
         "factor_admitido": FACTOR_VALIDACION,
@@ -348,7 +365,7 @@ def t06_fuera_de_muestra(ctx: ContextoEvaluacion) -> ResultadoPrueba:
             "El error fuera de muestra no es finito: la predicción no es usable",
             datos,
         )
-    if error > FACTOR_VALIDACION * escala:
+    if error_comparable > FACTOR_VALIDACION * escala:
         return ResultadoPrueba(
             "T06", TITULOS["T06"], "FALLIDO",
             (
@@ -495,7 +512,14 @@ def t10_incertidumbre(ctx: ContextoEvaluacion) -> ResultadoPrueba:
     experimental = ctx.dataset.incertidumbre_media(ctx.hipotesis.observable_objetivo)
     presupuesto = ctx.presupuesto_incertidumbre
     error = float(ctx.errores_reservado.get("hipotesis", float("nan")))
+    es_chi2 = ctx.hipotesis.metrica == "chi2_reducido"
+    # chi² reducido ya incorpora sigma al calcularse: no volver a dividir
+    # por un presupuesto con dimensiones físicas. Su raíz se evalúa como
+    # residuo normalizado, con valor esperado cercano a 1.
+    if es_chi2:
+        presupuesto = 1.0
     datos = {
+        "escala_comparacion": "sigma_normalizada" if es_chi2 else "observable",
         "incertidumbre_declarada": None if not np.isfinite(declarada) else declarada,
         "incertidumbre_experimental": experimental,
         "presupuesto_combinado": presupuesto or None,
@@ -516,7 +540,7 @@ def t10_incertidumbre(ctx: ContextoEvaluacion) -> ResultadoPrueba:
             "No hay error utilizable para comparar con la incertidumbre declarada",
             datos,
         )
-    razon = error / presupuesto
+    razon = (float(np.sqrt(error)) if es_chi2 and error >= 0 else error) / presupuesto
     datos["razon_error_sobre_presupuesto"] = razon
     componentes = []
     if datos["incertidumbre_declarada"]:

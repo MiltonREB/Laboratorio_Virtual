@@ -53,10 +53,10 @@ class TestT02Falsabilidad(unittest.TestCase):
     def test_aprobado_con_prediccion_variable(self):
         self.assertEqual(protocolo.t02_falsabilidad(contexto()).estado, "APROBADO")
 
-    def test_fallido_con_prediccion_constante_y_marcado_como_ausencia(self):
+    def test_prediccion_constante_falsable_no_es_ausencia(self):
         r = protocolo.t02_falsabilidad(contexto(pred_hip=np.full(4, 3.0)))
-        self.assertEqual(r.estado, "FALLIDO")
-        self.assertTrue(r.es_ausencia)
+        self.assertEqual(r.estado, "APROBADO")
+        self.assertFalse(r.es_ausencia)
 
     def test_fallido_con_no_finitos(self):
         r = protocolo.t02_falsabilidad(

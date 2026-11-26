@@ -165,7 +165,17 @@ def agregar(
             "Las condiciones evaluadas no están dentro del dominio declarado (T12).",
         )
 
-    # 3. No generaliza.
+    # 3. El preregistro debe resolverse ANTES de emitir un juicio
+    # empírico desfavorable. Si no es válido, el contraste no sustenta
+    # una conclusión confirmatoria ni una conclusión negativa definitiva.
+    if m.get("T04") != "APROBADO":
+        return salir(
+            "PENDIENTE",
+            "Preregistro no validado (T04): no se emite veredicto empírico. "
+            "Verificar sello, anterioridad y parámetros antes de repetir.",
+        )
+
+    # 4. No generaliza.
     if "T06" in falla:
         return salir(
             "NO_CORROBORADA",
@@ -187,15 +197,6 @@ def agregar(
             "SENSIBLE",
             "El signo de la mejora cambia al cambiar la partición (T08): hay que "
             "fijar el diseño y repetir antes de concluir.",
-        )
-
-    # 6. Veredicto condicionado por la validez del preregistro.
-    if "T04" in falla:
-        return salir(
-            "PENDIENTE",
-            "El preregistro no coincide con la firma actual (T04): los umbrales o "
-            "parámetros cambiaron después de sellarse. Repite el preregistro y la "
-            "corrida para que el resultado sea interpretable.",
         )
 
     # 7. Cualquier otra bloqueante no cumplida impide la corroboración.
